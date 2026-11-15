@@ -42,9 +42,10 @@ def run(
     fps: float | None = None,
     sleep=time.sleep,
     perf=time.perf_counter,
+    snap: WorldSnapshot | None = None,
 ) -> dict:
     start_dt = parse_start(start)
-    snap = WorldSnapshot()
+    snap = snap or WorldSnapshot()
     compose: list[float] = []
     show: list[float] = []
     push: list[float] = []  # SetImage only (displays that expose last_push_s)
@@ -112,20 +113,33 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--seconds", type=float, help="with --fps: run for this long (overrides --frames)")
     p.add_argument("--fps", type=float, help="pace frames at this rate and count late ones")
     p.add_argument("--show", action="store_true", help="push frames to the configured display")
+    p.add_argument("--condition", help="force a weather Condition (e.g. THUNDER) to time heavy scenes")
+    p.add_argument("--temp", type=float, default=15.0, help="outdoor temperature for --condition")
+    p.add_argument("--gust", type=float, default=10.0, help="wind gusts in km/h for --condition")
     args = p.parse_args(argv)
 
     cfg = load_config(args.config_dir, args.profile)
     d = cfg["display"]
     root = args.config_dir.resolve().parent
     renderer = Renderer(root / "assets" / "src", d["cols"], d["rows"])  # assets before the matrix
+    frames = int(args.seconds * args.fps) if args.seconds and args.fps else args.frames
+    # Everything that imports or reads files comes BEFORE the display is created: once the panel
+    # starts, the process drops root and can no longer read the checkout (spec section 11).
+    snap = None
+    if args.condition:
+        from ..ports import Condition
+        from .contact_sheet import make_weather
+
+        snap = WorldSnapshot(
+            weather=make_weather(Condition[args.condition.upper()], args.temp, parse_start(args.at), args.gust)
+        )
     display = None
     if args.show:
         from ..app import build_display
 
         display = build_display(cfg)
-    frames = int(args.seconds * args.fps) if args.seconds and args.fps else args.frames
     try:
-        result = run(renderer, args.at, frames, display, args.fps)
+        result = run(renderer, args.at, frames, display, args.fps, snap=snap)
     finally:
         if display is not None:
             display.close()
