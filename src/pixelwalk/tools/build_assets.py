@@ -58,10 +58,16 @@ def lint(assets: Assets) -> tuple[list[str], list[str]]:
                 elif diff > s.width * s.height // 2:
                     warnings.append(f"{s.name}: frames {s.labels[i]}->{s.labels[j]} change {diff} px")
         if distinct:
+            need = 3
+            for flag in s.flags:  # "min_diff=N" lowers the requirement (3x5 digits cannot reach 3)
+                if flag.startswith("min_diff="):
+                    need = int(flag.split("=", 1)[1])
             for i, j in combinations(range(len(s.frames)), 2):
                 d = _pixel_diff(s.frames[i], s.frames[j])
-                if d < 3:
-                    errors.append(f"{s.name}: glyphs {s.labels[i]} and {s.labels[j]} differ by only {d} px")
+                if d < need:
+                    errors.append(
+                        f"{s.name}: glyphs {s.labels[i]} and {s.labels[j]} differ by only {d} px (need {need})"
+                    )
     return errors, warnings
 
 

@@ -1,0 +1,76 @@
+# Status-row digits, 3x5. Ink is 'k'; the renderer uses each glyph as a mask.
+# At 3x5 several standard digit pairs differ by a single pixel (3/9, 5/6, 8/9, 0/8 ...), so this
+# font declares min_diff=1 instead of the usual 3 px between glyphs.
+sprite font3x5 3x5 glyphs min_diff=1
+frame 0
+kkk
+k.k
+k.k
+k.k
+kkk
+frame 1
+.k.
+kk.
+.k.
+.k.
+kkk
+frame 2
+kkk
+..k
+kkk
+k..
+kkk
+frame 3
+kkk
+..k
+kkk
+..k
+kkk
+frame 4
+k.k
+k.k
+kkk
+..k
+..k
+frame 5
+kkk
+k..
+kkk
+..k
+kkk
+frame 6
+kkk
+k..
+kkk
+k.k
+kkk
+frame 7
+kkk
+..k
+.k.
+.k.
+.k.
+frame 8
+kkk
+k.k
+kkk
+k.k
+kkk
+frame 9
+kkk
+k.k
+kkk
+..k
+kkk
+frame minus
+...
+...
+kkk
+...
+...
+frame deg
+kkk
+k.k
+kkk
+...
+...

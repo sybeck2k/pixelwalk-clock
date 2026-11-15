@@ -61,7 +61,7 @@ class ScriptedBrightness:
         self.pcts = pcts
         self.calls = 0
 
-    def update(self, t, lux, motion):
+    def update(self, t, lux, motion, factor=1.0, cap_pct=None):  # the real controller also takes these
         pct = self.pcts[min(self.calls, len(self.pcts) - 1)]
         self.calls += 1
         return pct

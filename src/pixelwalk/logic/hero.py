@@ -46,6 +46,10 @@ class Hero:
         if override is not None:
             if override.pose == "stand":
                 return HeroDraw(override.x, override.y, "hero_idle", 0)
+            if override.pose in ("sit", "sleep"):  # resting by the campfire
+                return HeroDraw(override.x, override.y, "hero_sit", 0 if override.pose == "sit" else 1)
+            if override.pose == "wake":  # the stretch when motion returns
+                return HeroDraw(override.x, override.y, "hero_wake", int(mono * 3) % 2)
             if override.pose == "walk":
                 return HeroDraw(override.x, override.y, "hero_walk", int(mono * WALK_FPS) % 4)
             return HeroDraw(override.x, override.y, "hero_jump", 0 if override.pose == "jump_up" else 1)

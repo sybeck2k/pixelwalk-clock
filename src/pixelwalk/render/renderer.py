@@ -28,13 +28,15 @@ from ..logic.astro import (
     sun_progress,
     valid_sun_times,
 )
-from ..logic.clockface import ClockFace
+from ..logic.clockface import GROUND_Y, HOME_X, ClockFace, HeroOverride
 from ..logic.director import Biome, BiomeSelector, effect_target, hero_accessory
 from ..logic.effects import EffectState
 from ..logic.hero import Hero
+from ..logic.presence import PresenceState
 from ..logic.transition import Transition
 from ..state import WorldSnapshot
 from .assets import Assets, load_assets
+from .hud import Hud, format_temp
 from .particles import Clouds, Lightning, Rain, Snow, Wind
 from .phases import phase_palette, remap_image
 from .world import BIOMES, FADE_STEPS, World
@@ -55,6 +57,11 @@ TWINKLE_PERIOD = 0.8
 SKY_H = 40  # the sky wash covers the sky down to the horizon
 FOG_TOP = 22  # the fog wash covers the scenery, not the clock blocks' band
 PIPE_Y = 40
+
+CAMP_X, CAMP_Y = 44, 46  # the campfire the robot rests beside (8x10, on the ground line)
+SLEEP_AFTER_S = 20.0  # drowsy: sits awake for this long, then sleeps
+WALK_SPEED = 8.0  # px/s: the campfire drifts away with the ground once the robot walks on
+HUD_Y = 1
 
 DEFAULT_SUNRISE_S = 7 * 3600 + 30 * 60
 DEFAULT_SUNSET_S = 18 * 3600 + 30 * 60
@@ -105,6 +112,10 @@ class Renderer:
         sunrise_s: float = DEFAULT_SUNRISE_S,
         sunset_s: float = DEFAULT_SUNSET_S,
         min_stay_s: float = 600.0,
+        hud_indoor: bool = True,
+        hud_outdoor: bool = True,
+        cold_c: float = 18.0,
+        hot_c: float = 26.0,
     ) -> None:
         self.width, self.height = width, height
         self.assets = assets or load_assets(assets_dir)
@@ -117,6 +128,9 @@ class Renderer:
         self.biome = Biome.GRASS
         self._transition: Transition | None = None
         self.effects = EffectState()
+        # Settings the control page can change while the app runs.
+        self.hud_indoor, self.hud_outdoor, self.cold_c, self.hot_c = hud_indoor, hud_outdoor, cold_c, hot_c
+        self._camp_x: float | None = None
 
         self._stars = build_star_images(self.assets, width, random.Random(seed + 1))
         self._sun = self.assets["sun"].frames[0]
@@ -129,7 +143,10 @@ class Renderer:
         master = self.assets.palette
         self._pal = {p: phase_palette(master, p) for p in Phase}
         actor = {p: phase_palette(master, p, actor=True) for p in Phase}
-        names = ("hero_walk", "hero_idle", "hero_jump", "umbrella", "scarf")
+        names = (
+            "hero_walk", "hero_idle", "hero_jump", "umbrella", "scarf",
+            "hero_sit", "hero_wake", "sleep_z", "campfire",
+        )
         self._hero = {  # pre-tinted per phase, so no colour maths per frame
             p: {n: [remap_image(f, master, actor[p]) for f in self.assets[n].frames] for n in names} for p in Phase
         }
@@ -154,6 +171,8 @@ class Renderer:
         self._masks: dict[tuple, Image.Image] = {}
         self._scaled: dict[tuple, Image.Image] = {}
         self._cloud_blend: dict[tuple, Image.Image] = {}
+        font3 = self.assets["font3x5"]
+        self.hud = Hud({lab: f.getchannel("A") for lab, f in zip(font3.labels, font3.frames, strict=True)})
         self._block = self.assets["clock_block"].frames[0]
         font = self.assets["font5x7"]
         # Glyph masks: ink pixels are opaque, so the alpha channel is the paste mask.
@@ -229,7 +248,9 @@ class Renderer:
         # Biome and transition.
         if self.selector.current is None:
             self.biome = self.selector.initialize(t, weather)
-        if self._transition is None and not self.clockface.bumping:
+        pv = snap.presence
+        active = pv is None or pv.state is PresenceState.ACTIVE  # resting: no pipe trips, no bumps
+        if self._transition is None and not self.clockface.bumping and active:
             wanted = self.selector.target(t, weather)
             if wanted is not self.selector.current:
                 self._transition = Transition(t, self.selector.current, wanted)
@@ -242,8 +263,17 @@ class Renderer:
                 self._transition, tv = None, None
 
         # Clock and hero.
-        view = self.clockface.update(now, t, hero_available=not (tv and tv.busy))
-        override = tv.hero if (tv and tv.hero) else view.hero
+        view = self.clockface.update(now, t, hero_available=not (tv and tv.busy) and active)
+        override = tv.hero if (tv and tv.hero) else None
+        sleeping = False
+        if override is None and pv is not None and not active:
+            if pv.state is PresenceState.WAKING:
+                override = HeroOverride(HOME_X, GROUND_Y, "wake")
+            else:  # DROWSY (and DARK, if it is ever drawn): sit, then sleep
+                sleeping = pv.state is PresenceState.DARK or pv.since_s >= SLEEP_AFTER_S
+                override = HeroOverride(HOME_X, GROUND_Y, "sleep" if sleeping else "sit")
+        if override is None:
+            override = view.hero
         draw = self.hero.update(t, override, force_walk=bool(tv and tv.force_walk))
 
         # Weather effects.
@@ -272,7 +302,8 @@ class Renderer:
         sprites = self._hero[hero_phase]
         sprite = sprites[draw.sprite][draw.frame]
         img.paste(sprite, (draw.x, draw.y), sprite)
-        if tv is None:
+        self._campfire(img, sprites, t, dt, pv, draw, sleeping)
+        if tv is None and active:
             acc = hero_accessory(lv.rain, lv.snow)
             if acc == "umbrella":
                 u = sprites["umbrella"][0]
@@ -297,12 +328,39 @@ class Renderer:
 
         self._block_with_digits(img, "hh", view.hh, view.hh_dy)
         self._block_with_digits(img, "mm", view.mm, view.mm_dy)
+        self._status_row(img, snap, hero_phase)
         if tv is not None and tv.wipe is not None:
             kind, w = tv.wipe
             box = (0, 0, w, self.height) if kind == "close" else (w, 0, self.width, self.height)
             if box[2] > box[0]:
                 img.paste((0, 0, 0), box)
         return img
+
+    def _campfire(self, img, sprites, t, dt, pv, draw, sleeping) -> None:
+        resting = pv is not None and pv.state in (PresenceState.DROWSY, PresenceState.WAKING, PresenceState.DARK)
+        if resting:
+            self._camp_x = float(CAMP_X)
+        elif self._camp_x is not None:  # the robot has walked on: the fire slides away with the ground
+            self._camp_x -= WALK_SPEED * dt
+            if self._camp_x < -8:
+                self._camp_x = None
+        if self._camp_x is not None:
+            fire = sprites["campfire"][int(t * 6) % 3]
+            img.paste(fire, (round(self._camp_x), CAMP_Y), fire)
+        if sleeping:  # a floating z above the sleeping robot
+            z = sprites["sleep_z"][int(t * 1.5) % 2]
+            img.paste(z, (draw.x + 8, draw.y - 5), z)
+
+    def _status_row(self, img: Image.Image, snap: WorldSnapshot, phase: Phase) -> None:
+        pal = self._pal[phase]
+        if self.hud_indoor and snap.sensors is not None and snap.sensors.temperature_c is not None:
+            c = snap.sensors.temperature_c
+            colour = pal["c"] if c < self.cold_c else pal["B"] if c > self.hot_c else pal["w"]
+            text = self.hud.image(format_temp(c), colour)
+            img.paste(text, (1, HUD_Y), text)
+        if self.hud_outdoor and snap.weather is not None:
+            text = self.hud.image(format_temp(snap.weather.temperature_c), pal["w"])
+            img.paste(text, (self.width - text.width - 1, HUD_Y), text)
 
     def _celestial(
         self,

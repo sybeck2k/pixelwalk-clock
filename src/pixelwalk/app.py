@@ -7,7 +7,7 @@ import signal
 import statistics
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -16,10 +16,13 @@ from PIL import (
     ImageFile,  # noqa: F401  Image.tobytes() imports it lazily; after the privilege drop that import fails
 )
 
+from .adapters.display_scaled import ScaledDisplay
 from .adapters.scenario import Scenario, parse_start
 from .demo import Demo
+from .logic.astro import seconds_of_day
 from .logic.barometer import Barometer
 from .logic.brightness import BrightnessConfig, BrightnessController
+from .logic.presence import Presence, PresenceConfig
 from .ports import Clock, Display, MotionInput, Sensors, WeatherSource
 from .render.renderer import Renderer
 from .state import WorldState
@@ -37,6 +40,7 @@ class App:
     state: WorldState
     renderer: Renderer
     brightness: BrightnessController
+    presence: Presence = field(default_factory=Presence)
     barometer: Barometer = field(default_factory=Barometer)
     background: list[Any] = field(default_factory=list)  # objects with start() and stop()
     scenario: Scenario | None = None
@@ -107,12 +111,39 @@ def build_app(
     else:
         clock = SystemClock()
 
-    for section, wanted in (("sensors", "sim"), ("motion", "sim")):
-        if cfg[section]["backend"] != wanted:
-            raise NotImplementedError(f"{section}.backend = {cfg[section]['backend']!r} is not built yet")
-
     weather: WeatherSource
     background: list[Any] = []
+
+    sc = cfg["sensors"]
+    if sc["backend"] == "sysfs":
+        from .adapters.sensors_sysfs import SysfsSensors
+
+        sensors: Sensors = SysfsSensors(
+            clock,
+            illuminance_path=sc.get("illuminance_path"),
+            lux_legacy_path=sc.get("lux_legacy_path"),
+            temperature_path=sc.get("temperature_path"),
+            humidity_path=sc.get("humidity_path"),
+            pressure_path=sc.get("pressure_path"),
+        )
+    else:
+        sensors = SimSensors(scenario, clock)
+
+    mc = cfg["motion"]
+    motion: MotionInput
+    if mc["backend"] == "gpio":
+        # Open the line before the panel starts: afterwards the process may no longer be root.
+        from .adapters.motion_gpio import GpioMotionInput, MotionUnavailable, UnavailableMotion
+
+        try:
+            motion = GpioMotionInput(mc["chip"], mc["line"], mc.get("poll_hz", 5.0))
+            background.append(motion)  # its polling thread starts with the main loop
+        except MotionUnavailable as e:
+            log.warning("no motion input (%s); the display will behave as if someone is always there", e)
+            motion = UnavailableMotion()
+    else:
+        motion = SimMotionInput(scenario)
+
     if cfg["weather"]["backend"] == "openmeteo":
         from .adapters.weather_openmeteo import OpenMeteoWeather
 
@@ -141,18 +172,24 @@ def build_app(
         sunrise_s=_hhmm(cfg["clock"]["sunrise_fallback"]),
         sunset_s=_hhmm(cfg["clock"]["sunset_fallback"]),
         min_stay_s=cfg["director"]["min_stay_s"],
+        hud_indoor=cfg["hud"]["indoor"],
+        hud_outdoor=cfg["hud"]["outdoor"],
+        cold_c=cfg["hero"]["cold_c"],
+        hot_c=cfg["hero"]["hot_c"],
     )
-    display = build_display(cfg)
+    # The application works in 0..100 relative brightness; the ceiling maps that onto the panel.
+    display = ScaledDisplay(build_display(cfg), d["max_brightness_pct"])
 
     return App(
         clock=clock,
         display=display,
-        sensors=SimSensors(scenario, clock),
-        motion=SimMotionInput(scenario),
+        sensors=sensors,
+        motion=motion,
         weather=weather,
         state=WorldState(),
         renderer=renderer,
         brightness=BrightnessController(BrightnessConfig.from_dict(cfg.get("brightness", {}))),
+        presence=Presence(PresenceConfig.from_dict(cfg.get("presence", {}))),
         background=background,
         scenario=scenario,
         demo=Demo.from_scenario(scenario) if demo else None,
@@ -166,13 +203,15 @@ def _poll_inputs(app: App, t: float) -> None:
     if app.scenario:
         app.scenario.refresh()
     now = app.clock.now()
-    moving = app.motion.motion()
+    level = app.motion.motion()  # None: no motion sensor
+    moving = bool(level) if level is not None else True
     snap = app.state.snapshot()
     reading = app.sensors.read()
     app.state.update(
         sensors=reading,
         weather=app.weather.get(),
         motion=moving,
+        motion_available=level is not None,
         last_motion_at=now if moving else snap.last_motion_at,
     )
     app.barometer.maybe_sample(t, reading.pressure_hpa)  # one sample every 5 minutes
@@ -210,7 +249,12 @@ def run(
             next_poll = t0 + 1.0
         snap = app.state.snapshot()
         lux = snap.sensors.lux if snap.sensors else None
-        pct = app.brightness.update(t0, lux, snap.motion)
+        presence = app.presence.update(
+            t0, snap.motion if snap.motion_available else None, seconds_of_day(app.clock.now())
+        )
+        pct = app.brightness.update(t0, lux, snap.motion, factor=presence.factor, cap_pct=presence.cap_pct)
+        app.state.update(presence=presence)  # kept in the shared state for the status page
+        snap = replace(snap, presence=presence)
         if pct != shown_pct:
             app.display.set_brightness(pct)
             shown_pct = pct
