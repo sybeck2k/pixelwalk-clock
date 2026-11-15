@@ -23,7 +23,13 @@ DEFAULTS: dict[str, Any] = {
 
 
 def parse_start(text: str) -> datetime:
-    return datetime.strptime(text, "%Y-%m-%d %H:%M").astimezone()
+    """Accepts 'YYYY-MM-DD HH:MM' or 'YYYY-MM-DD HH:MM:SS' (local time)."""
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+        try:
+            return datetime.strptime(text, fmt).astimezone()
+        except ValueError:
+            pass
+    raise ValueError(f"invalid start time {text!r}; expected 'YYYY-MM-DD HH:MM[:SS]'")
 
 
 class Scenario:

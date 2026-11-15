@@ -81,3 +81,12 @@ def test_main_loop_runs_headless_and_populates_state():
     snap = app.state.snapshot()
     assert snap.sensors.temperature_c == 21.5
     assert snap.weather is not None and snap.motion is True
+
+
+def test_parse_start_with_and_without_seconds():
+    from pixelwalk.adapters.scenario import parse_start
+
+    assert parse_start("2026-12-24 21:30").second == 0
+    assert parse_start("2026-12-24 21:30:45").second == 45
+    with pytest.raises(ValueError, match="invalid start time"):
+        parse_start("tomorrow")
