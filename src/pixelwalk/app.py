@@ -7,13 +7,14 @@ import signal
 import statistics
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from PIL import Image
 
 from .adapters.scenario import Scenario, parse_start
+from .logic.barometer import Barometer
 from .logic.brightness import BrightnessConfig, BrightnessController
 from .ports import Clock, Display, MotionInput, Sensors, WeatherSource
 from .render.renderer import Renderer
@@ -32,6 +33,8 @@ class App:
     state: WorldState
     renderer: Renderer
     brightness: BrightnessController
+    barometer: Barometer = field(default_factory=Barometer)
+    background: list[Any] = field(default_factory=list)  # objects with start() and stop()
     scenario: Scenario | None = None
     target_fps: float = 30.0
 
@@ -87,9 +90,28 @@ def build_app(
     else:
         clock = SystemClock()
 
-    for section, wanted in (("sensors", "sim"), ("motion", "sim"), ("weather", "sim")):
+    for section, wanted in (("sensors", "sim"), ("motion", "sim")):
         if cfg[section]["backend"] != wanted:
             raise NotImplementedError(f"{section}.backend = {cfg[section]['backend']!r} is not built yet")
+
+    weather: WeatherSource
+    background: list[Any] = []
+    if cfg["weather"]["backend"] == "openmeteo":
+        from .adapters.weather_openmeteo import OpenMeteoWeather
+
+        w = cfg["weather"]
+        weather = OpenMeteoWeather(
+            w["latitude"],
+            w["longitude"],
+            clock,
+            cache_path=root / w["cache_path"] if w.get("cache_path") else None,
+            poll_interval_s=w["poll_interval_s"],
+            timeout_s=w["timeout_s"],
+            max_age_s=w["max_age_s"],
+        )
+        background.append(weather)  # its polling thread starts with the main loop
+    else:
+        weather = SimWeather(scenario, clock)
 
     d = cfg["display"]
     # Order matters on the Pi: load all assets first, create the matrix last. After the matrix
@@ -101,6 +123,7 @@ def build_app(
         hour24=cfg["clock"]["hour24"],
         sunrise_s=_hhmm(cfg["clock"]["sunrise_fallback"]),
         sunset_s=_hhmm(cfg["clock"]["sunset_fallback"]),
+        min_stay_s=cfg["director"]["min_stay_s"],
     )
     display = build_display(cfg)
 
@@ -109,28 +132,33 @@ def build_app(
         display=display,
         sensors=SimSensors(scenario, clock),
         motion=SimMotionInput(scenario),
-        weather=SimWeather(scenario, clock),
+        weather=weather,
         state=WorldState(),
         renderer=renderer,
         brightness=BrightnessController(BrightnessConfig.from_dict(cfg.get("brightness", {}))),
+        background=background,
         scenario=scenario,
         target_fps=float(d["target_fps"]),
     )
 
 
-def _poll_inputs(app: App) -> None:
-    """Phase 1 polls inline on the main thread; real adapters get input threads later."""
+def _poll_inputs(app: App, t: float) -> None:
+    """Sensors and motion are polled inline on the main thread (the weather source has its own
+    thread and get() only returns its latest result)."""
     if app.scenario:
         app.scenario.refresh()
     now = app.clock.now()
     moving = app.motion.motion()
     snap = app.state.snapshot()
+    reading = app.sensors.read()
     app.state.update(
-        sensors=app.sensors.read(),
+        sensors=reading,
         weather=app.weather.get(),
         motion=moving,
         last_motion_at=now if moving else snap.last_motion_at,
     )
+    if app.barometer.maybe_sample(t, reading.pressure_hpa):  # one sample every 5 minutes
+        app.state.update(pressure_trend=app.barometer.trend())
 
 
 def run(
@@ -149,7 +177,7 @@ def run(
     while not should_stop() and (max_frames is None or frames < max_frames):
         t0 = app.clock.monotonic()
         if t0 >= next_poll:
-            _poll_inputs(app)
+            _poll_inputs(app, t0)
             next_poll = t0 + 1.0
         snap = app.state.snapshot()
         lux = snap.sensors.lux if snap.sensors else None
@@ -193,7 +221,11 @@ def main_loop(app: App, max_frames: int | None = None) -> None:
     if hasattr(signal, "SIGTERM"):
         signal.signal(signal.SIGTERM, _stop)
     try:
+        for b in app.background:
+            b.start()
         run(app, max_frames=max_frames, should_stop=lambda: stop)
     finally:
+        for b in app.background:
+            b.stop()
         app.motion.close()
         app.display.close()

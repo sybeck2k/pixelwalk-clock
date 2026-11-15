@@ -28,7 +28,9 @@ class Hero:
         self._last: float | None = None
         self.world_x = 0.0  # distance walked; the world scrolls by this
 
-    def update(self, mono: float, override: HeroOverride | None) -> HeroDraw:
+    def update(
+        self, mono: float, override: HeroOverride | None, force_walk: bool = False
+    ) -> HeroDraw:
         dt = 0.0 if self._last is None else min(0.25, max(0.0, mono - self._last))
         self._last = mono
         if self._until is None:
@@ -38,7 +40,12 @@ class Hero:
             span = self._rng.uniform(20, 60) if self._walking else self._rng.uniform(5, 15)
             self._until += span
 
+        if force_walk and override is None and not self._walking:  # e.g. a pipe is scrolling in
+            self._walking = True
+            self._until = mono + self._rng.uniform(20, 60)
         if override is not None:
+            if override.pose == "stand":
+                return HeroDraw(override.x, override.y, "hero_idle", 0)
             if override.pose == "walk":
                 return HeroDraw(override.x, override.y, "hero_walk", int(mono * WALK_FPS) % 4)
             return HeroDraw(override.x, override.y, "hero_jump", 0 if override.pose == "jump_up" else 1)

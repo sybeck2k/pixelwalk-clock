@@ -15,6 +15,7 @@ from pixelwalk.logic.astro import (
     sun_progress,
     valid_sun_times,
 )
+from pixelwalk.logic.director import Biome
 from pixelwalk.render.assets import load_assets
 from pixelwalk.render.phases import phase_palette
 from pixelwalk.render.renderer import Renderer
@@ -160,8 +161,8 @@ def test_sky_corner_fades_monotonically_from_day_to_dusk():
     """A full-layer cross-fade: no pop, and it ends exactly on the next phase's colour."""
     r = Renderer(ASSETS)
     boundary = at(17, 50)  # sunset 18:30 minus 40 min
-    day = r.world.layers[Phase.DAY].sky.getpixel((0, 0))
-    dusk = r.world.layers[Phase.DUSK].sky.getpixel((0, 0))
+    day = r.world.layer(Biome.GRASS, Phase.DAY).sky.getpixel((0, 0))
+    dusk = r.world.layer(Biome.GRASS, Phase.DUSK).sky.getpixel((0, 0))
     seen = []
     for k in range(-31, 32):
         img = r.render(WorldSnapshot(), 0.0, boundary + timedelta(seconds=k))
@@ -204,7 +205,7 @@ def test_weather_sunrise_overrides_fallback():
     r = Renderer(ASSETS)
     # 20:00 is dusk-or-later for the 18:30 fallback, but plain day for a 21:00 sunset.
     with_weather = r.render(WorldSnapshot(weather=early), 0.0, at(12, 0)).copy()
-    assert with_weather.getpixel((0, 0)) == r.world.layers[Phase.DAY].sky.getpixel((0, 0))
+    assert with_weather.getpixel((0, 0)) == r.world.layer(Biome.GRASS, Phase.DAY).sky.getpixel((0, 0))
     assert r._sun_times(WorldSnapshot(weather=early)) == (4 * H, 21 * H)
     assert r._sun_times(WorldSnapshot()) == (SR, SS)
     nonsense = replace(w, sunrise=at(0, 10), sunset=at(23, 55))

@@ -50,6 +50,15 @@ def validate(cfg: dict[str, Any]) -> None:
             continue
         if value not in allowed:
             raise ConfigError(f"{dotted} = {value!r} is invalid; expected one of {sorted(allowed)}")
+    w = cfg.get("weather", {})
+    if w.get("backend") == "openmeteo":
+        for key, lo, hi in (("latitude", -90, 90), ("longitude", -180, 180)):
+            v = w.get(key)
+            if not isinstance(v, (int, float)) or isinstance(v, bool) or not lo <= v <= hi:
+                raise ConfigError(
+                    f"weather.{key} is required for the openmeteo backend and must be a number "
+                    f"between {lo} and {hi} (set it in config/local.toml)"
+                )
     b = cfg.get("brightness")
     if b is not None:
         from .logic.brightness import BrightnessConfig, check_config

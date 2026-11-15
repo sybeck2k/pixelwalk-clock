@@ -34,3 +34,43 @@ klllllllllllllllllk
 klllllllllllllllllk
 kLLLLLLLLLLLLLLLLLk
 .kkkkkkkkkkkkkkkkk.
+
+sprite ground_snow 8x8
+frame a
+WWWZWWWW
+ZZZZZZZZ
+ZZaZZZZZ
+ZZZZZZZa
+ZaZZZZZZ
+ZZZZZaZZ
+aZZZZZZZ
+aaaaaaaa
+frame b
+WWWWWWZW
+ZZZZZZZZ
+ZZZZaZZZ
+aZZZZZZZ
+ZZZZZZaZ
+ZZaZZZZZ
+ZZZZZZZa
+aaaaaaaa
+
+sprite ground_sand 8x8
+frame a
+nnnNnnnn
+nnnnnnnn
+nNnnnnnn
+nnnnnnNn
+nnnnNnnn
+Nnnnnnnn
+nnnnnnnN
+NNNNNNNN
+frame b
+nnnnnNnn
+nnnnnnnn
+nnnnnnNn
+nNnnnnnn
+nnnnnnnn
+nnnNnnnn
+Nnnnnnnn
+NNNNNNNN

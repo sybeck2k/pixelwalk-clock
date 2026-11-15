@@ -29,3 +29,7 @@ L cream_dk   #b8a878
 2 sky2       #5aa8f6
 3 sky3       #86c4fa
 4 sky4       #b4dcfc
+n sand       #e8c878
+N sand_dk    #c49a50
+W snow       #dce8f4
+Z snow_dk    #a8bcd8

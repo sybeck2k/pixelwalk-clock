@@ -35,7 +35,16 @@ TINT: dict[Phase, tuple[RGB, float, float]] = {
 # Hand-picked exceptions where the formula leaves two touching colours too close for the panel
 # at low brightness (found with tools/led_preview.py; at 10% there are only ~23 levels).
 OVERRIDES: dict[Phase, dict[str, RGB]] = {
-    Phase.NIGHT: {"D": (28, 20, 50)},  # dark dirt vs dirt in the ground speckle
+    Phase.NIGHT: {
+        "D": (28, 20, 50),  # dark dirt vs dirt in the ground speckle
+        "N": (60, 50, 84),  # dark sand vs sand
+        "g": (30, 118, 60),  # bush highlights vs the hills behind them
+        "W": (120, 132, 196),  # snow cap, snow shade and grey flecks: three clearly separate levels
+        "Z": (78, 88, 150),
+        "a": (46, 54, 110),
+        "A": (28, 32, 70),  # metal pipe: light vs shade
+        "w": (158, 170, 214),  # clouds against the snowy peaks
+    },
 }
 
 # Characters get a gentler version so they stay readable against the darkened scenery.

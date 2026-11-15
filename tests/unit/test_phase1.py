@@ -37,8 +37,10 @@ def test_simclock_speed_pause_set():
     assert c.monotonic() == real.t
 
 
-def test_config_layering_and_validation():
-    cfg = load_config(ROOT / "config", "pi")
+def test_config_layering_and_validation(tmp_path):
+    local = tmp_path / "local.toml"
+    local.write_text("[weather]\nlatitude = 48.85\nlongitude = 2.35\n")  # the pi profile needs coordinates
+    cfg = load_config(ROOT / "config", "pi", local)
     assert cfg["display"]["backend"] == "matrix"
     assert cfg["display"]["rotation"] == 270
     bad = ROOT / "tests" / "_bad.toml"
@@ -90,3 +92,15 @@ def test_parse_start_with_and_without_seconds():
     assert parse_start("2026-12-24 21:30:45").second == 45
     with pytest.raises(ValueError, match="invalid start time"):
         parse_start("tomorrow")
+
+
+def test_openmeteo_backend_requires_coordinates_with_a_clear_message(tmp_path):
+    with pytest.raises(ConfigError, match=r"weather\.latitude is required"):
+        load_config(ROOT / "config", "pi")
+    bad = tmp_path / "l.toml"
+    bad.write_text("[weather]\nlatitude = 95\nlongitude = 2.35\n")
+    with pytest.raises(ConfigError, match="between -90 and 90"):
+        load_config(ROOT / "config", "pi", bad)
+    bad.write_text("[weather]\nlatitude = 48.85\n")
+    with pytest.raises(ConfigError, match=r"weather\.longitude is required"):
+        load_config(ROOT / "config", "pi", bad)

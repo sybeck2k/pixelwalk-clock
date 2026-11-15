@@ -1,0 +1,17 @@
+# Clouds (light top, grey underside), drawn behind the hills. Tinted per time of day like scenery.
+sprite cloud_a 16x6
+frame cloud
+......wwww......
+....wwwwwwww.ww.
+.wwwwwwwwwwwwww.
+wwwwwwwwwwwwwwww
+waaaaaaaaaaaaaaw
+.aaaaaaaaaaaaaa.
+
+sprite cloud_b 11x5
+frame cloud
+....www....
+..wwwwwww..
+.wwwwwwwww.
+wwwwwwwwwww
+.aaaaaaaaa.

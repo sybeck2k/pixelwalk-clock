@@ -141,3 +141,32 @@ frame down
 ...kaak..kaak...
 ...kkkk..kkkk...
 ................
+
+# Accessories are drawn over the hero. The umbrella is drawn 3 px above the hero's top (canopy
+# over the antenna, handle down the right side); the scarf is drawn at the hero's row 8 (neck).
+sprite umbrella 16x14
+frame held
+....kkkkkkkk....
+..kkrrrrrrrrkk..
+.krrrrrrrrrrrrk.
+kkkkkkkkkkkkkkkk
+..............k.
+..............k.
+..............k.
+..............k.
+..............k.
+..............k.
+..............k.
+..............k.
+..............k.
+..............k.
+
+sprite scarf 16x3
+frame wave_a
+..krrrrrrrrrrk..
+krrk............
+.krk............
+frame wave_b
+..krrrrrrrrrrk..
+krrrk...........
+kkk.............

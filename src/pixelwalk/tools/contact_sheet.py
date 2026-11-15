@@ -51,14 +51,66 @@ def contact_sheet(date: str = "2026-07-01", scale: int = 4, cols: int = 6) -> Im
     return sheet
 
 
+def make_weather(cond, temp_c: float, when: datetime, gust: float = 10.0, cover: float = 50.0):
+    """A Weather for review scenes: sunrise 07:30 and sunset 18:30 on the given day."""
+    from ..ports import Weather
+
+    day = when.replace(hour=0, minute=0, second=0, microsecond=0)
+    return Weather(
+        condition=cond, temperature_c=temp_c, is_day=True, wind_kmh=min(gust, 20.0), gust_kmh=gust,
+        cloud_cover_pct=cover, sunrise=day.replace(hour=7, minute=30), sunset=day.replace(hour=18, minute=30),
+        fetched_at=when,
+    )
+
+
+def weather_sheet(date: str = "2026-07-01", scale: int = 4, cols: int = 5) -> Image.Image:
+    """Every Condition, the three biomes at day/dusk/night, wind in each biome, and the barometer."""
+    from ..ports import Condition
+
+    assets = load_assets(Path("assets/src"))
+    day = datetime.strptime(date, "%Y-%m-%d").astimezone()
+    at = lambda h, m=0: day.replace(hour=h, minute=m)
+    noon = at(12)
+    cells: list[tuple[str, datetime, WorldSnapshot]] = []
+    for c in Condition:
+        snap = WorldSnapshot(weather=make_weather(c, 18.0, noon, cover={Condition.CLEAR: 10.0}.get(c, 80.0)))
+        cells.append((c.name.lower(), noon, snap))
+    for biome, temp in (("snow", -5.0), ("desert", 35.0)):
+        for label, when in (("day", noon), ("dusk", at(18, 30)), ("night", at(23))):
+            w = make_weather(Condition.CLEAR, temp, when)
+            cells.append((f"{biome} {label}", when, WorldSnapshot(weather=w)))
+    for biome, temp in (("grass", 18.0), ("desert", 35.0), ("snow", -5.0)):
+        w = make_weather(Condition.CLEAR, temp, noon, gust=60.0)
+        cells.append((f"{biome} windy", noon, WorldSnapshot(weather=w)))
+    cells.append(("barometer falling", noon, WorldSnapshot(
+        weather=make_weather(Condition.CLEAR, 18.0, noon, cover=0.0), pressure_trend="worsening")))
+    cells.append(("rain at night", at(23), WorldSnapshot(weather=make_weather(Condition.RAIN, 12.0, at(23)))))
+
+    size = 64 * scale
+    label_h = 12
+    rows = -(-len(cells) // cols)
+    sheet = Image.new("RGB", (cols * (size + 4) + 4, rows * (size + label_h + 4) + 4), (30, 30, 30))
+    d = ImageDraw.Draw(sheet)
+    for i, (label, when, snap) in enumerate(cells):
+        x = 4 + (i % cols) * (size + 4)
+        y = 4 + (i // cols) * (size + label_h + 4)
+        r = Renderer(Path("."), assets=assets, seed=1)
+        frame = r.render(snap, 0.0, when)
+        sheet.paste(frame.resize((size, size), Image.NEAREST), (x, y + label_h))
+        d.text((x, y), label, fill=(255, 255, 255))
+    return sheet
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--out", type=Path, default=Path("out/contact.png"))
     p.add_argument("--scale", type=int, default=4)
     p.add_argument("--date", default="2026-07-01")
+    p.add_argument("--weather", action="store_true", help="weather conditions and biomes instead of times of day")
     args = p.parse_args(argv)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    contact_sheet(args.date, args.scale).save(args.out)
+    sheet = weather_sheet(args.date, args.scale) if args.weather else contact_sheet(args.date, args.scale)
+    sheet.save(args.out)
     print(f"wrote {args.out}")
     return 0
 

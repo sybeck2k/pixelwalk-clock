@@ -21,6 +21,7 @@ from PIL import Image, ImageChops, ImageDraw
 
 from ..adapters.scenario import parse_start
 from ..render.renderer import Renderer
+from ..render.world import SKY_BANDS
 from ..state import WorldSnapshot
 
 PWM_MAX = 2047  # 11 bit planes, the library default
@@ -65,14 +66,24 @@ def led_preview(frame: Image.Image, brightness: int, scale: int = 8) -> Image.Im
     return ImageChops.multiply(big, Image.merge("RGB", (mask, mask, mask)))
 
 
+# Steps of the sky gradient are decorative: when two dark bands merge the sky just looks flat.
+# Edges lying exactly on a band boundary are not counted as "touching colours".
+SKY_BAND_EDGE_ROWS = frozenset(y0 - 1 for y0, _ in SKY_BANDS[1:])
+
+
 def adjacent_colour_pairs(frame: Image.Image) -> dict[tuple, int]:
-    """Colour pairs that touch (4-neighbourhood) in the frame, with how many edges they share."""
+    """Colour pairs that touch (4-neighbourhood) in the frame, with how many edges they share.
+
+    Edges on the sky gradient's band boundaries are skipped (see SKY_BAND_EDGE_ROWS).
+    """
     w, h = frame.size
     px = frame.convert("RGB").load()
     pairs: dict[tuple, int] = {}
     for y in range(h):
         for x in range(w):
             for nx, ny in ((x + 1, y), (x, y + 1)):
+                if ny != y and y in SKY_BAND_EDGE_ROWS:
+                    continue
                 if nx < w and ny < h and px[x, y] != px[nx, ny]:
                     key = tuple(sorted((px[x, y], px[nx, ny])))
                     pairs[key] = pairs.get(key, 0) + 1

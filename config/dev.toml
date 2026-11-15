@@ -8,3 +8,5 @@ backend = "sim"
 backend = "sim"
 [clock]
 backend = "sim"
+[director]
+min_stay_s = 15   # so scenario edits switch biomes quickly while developing

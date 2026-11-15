@@ -19,6 +19,15 @@ line = 16
 
 [weather]
 backend = "sim"           # sim | openmeteo
+# For the openmeteo backend, put latitude and longitude in config/local.toml (not committed):
+# the coordinates leave the house, so they are rounded to two decimals in the request.
+poll_interval_s = 900
+timeout_s = 10
+max_age_s = 10800         # a result older than this counts as unknown
+cache_path = "state/weather.json"   # last good response, so a restart without network has weather
+
+[director]
+min_stay_s = 600          # a biome stays at least this long (dev profile uses a short value)
 
 [clock]
 backend = "sim"           # sim | system

@@ -1,0 +1,59 @@
+# Biome-transition conduits, 16x16, standing on the ground line: grey metal pipes with a
+# coloured warning band per biome. The robot sinks into one and rises out of the next biome's
+# matching conduit (spec 7.11).
+sprite pipe_grass 16x16 ground
+frame pipe
+kkkkkkkkkkkkkkkk
+kawwaaaaaaaaaAAk
+kawwaaaaaaaaaAAk
+kkkkkkkkkkkkkkkk
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kgwgggggggGGGk.
+.kgwgggggggGGGk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kgwgggggggGGGk.
+.kgwgggggggGGGk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kkkkkkkkkkkkkk.
+
+sprite pipe_snow 16x16 ground
+frame pipe
+kkkkkkkkkkkkkkkk
+kawwaaaaaaaaaAAk
+kawwaaaaaaaaaAAk
+kkkkkkkkkkkkkkkk
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kcwcccccccuuuk.
+.kcwcccccccuuuk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kcwcccccccuuuk.
+.kcwcccccccuuuk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kkkkkkkkkkkkkk.
+
+sprite pipe_desert 16x16 ground
+frame pipe
+kkkkkkkkkkkkkkkk
+kawwaaaaaaaaaAAk
+kawwaaaaaaaaaAAk
+kkkkkkkkkkkkkkkk
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kBwBBBBBBBYYYk.
+.kBwBBBBBBBYYYk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kBwBBBBBBBYYYk.
+.kBwBBBBBBBYYYk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kkkkkkkkkkkkkk.
