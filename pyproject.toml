@@ -1,0 +1,27 @@
+[project]
+name = "pixelwalk"
+version = "0.1.0"
+description = "Side-scrolling platformer clock for a 64x64 RGB LED panel"
+requires-python = ">=3.12"
+dependencies = [
+    "Pillow==11.3.0",
+    "RGBMatrixEmulator",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

@@ -1,0 +1,22 @@
+{
+    "pixel_outline": 0,
+    "pixel_size": 8,
+    "pixel_style": "square",
+    "pixel_glow": 0,
+    "display_adapter": "browser",
+    "allow_adapter_fallback": false,
+    "icon_path": null,
+    "emulator_title": "pixelwalk",
+    "browser": {
+        "_comment": "Served at http://localhost:8888. PNG so pixel art is not smeared by JPEG.",
+        "port": 8888,
+        "target_fps": 30,
+        "fps_display": false,
+        "quality": 70,
+        "image_border": false,
+        "debug_text": false,
+        "image_format": "PNG",
+        "open_immediately": false
+    },
+    "log_level": "info"
+}

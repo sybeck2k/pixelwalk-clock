@@ -1,0 +1,10 @@
+[display]
+backend = "matrix"
+[sensors]
+backend = "sysfs"
+[motion]
+backend = "gpio"
+[weather]
+backend = "openmeteo"
+[clock]
+backend = "system"

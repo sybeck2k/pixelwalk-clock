@@ -1,0 +1,27 @@
+[display]
+backend = "emulator"      # emulator | matrix | png
+rows = 64
+cols = 64
+hardware_mapping = "regular"
+gpio_slowdown = 2
+rotation = 270            # 0, 90, 180, 270 (Pi only)
+target_fps = 30
+
+[sensors]
+backend = "sim"           # sim | sysfs
+poll_interval_s = 1.0
+
+[motion]
+backend = "sim"           # sim | gpio
+chip = "gpiochip0"
+line = 16
+
+[weather]
+backend = "sim"           # sim | openmeteo
+
+[clock]
+backend = "sim"           # sim | system
+hour24 = true
+
+[sim]
+scenario = "scenarios/default.toml"

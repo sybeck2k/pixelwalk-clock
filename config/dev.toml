@@ -1,0 +1,10 @@
+[display]
+backend = "emulator"
+[sensors]
+backend = "sim"
+[motion]
+backend = "sim"
+[weather]
+backend = "sim"
+[clock]
+backend = "sim"
