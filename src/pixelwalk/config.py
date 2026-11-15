@@ -59,6 +59,25 @@ def validate(cfg: dict[str, Any]) -> None:
                     f"weather.{key} is required for the openmeteo backend and must be a number "
                     f"between {lo} and {hi} (set it in config/local.toml)"
                 )
+    mx = cfg.get("display", {}).get("max_brightness_pct", 100)
+    if not isinstance(mx, (int, float)) or isinstance(mx, bool) or not 1 <= mx <= 100:
+        raise ConfigError(f"display.max_brightness_pct = {mx!r} must be a number between 1 and 100")
+    pr = cfg.get("presence")
+    if pr is not None:
+        from .logic.presence import PresenceConfig
+        from .logic.presence import check_config as check_presence
+
+        try:
+            problem = check_presence(PresenceConfig.from_dict(pr))
+        except TypeError as e:
+            raise ConfigError(f"presence: {e}") from None
+        if problem:
+            raise ConfigError(problem)
+    ctl = cfg.get("control", {})
+    if ctl.get("enabled"):
+        port = ctl.get("port")
+        if not isinstance(port, int) or isinstance(port, bool) or not 0 <= port <= 65535:
+            raise ConfigError(f"control.port = {port!r} must be a port number")
     b = cfg.get("brightness")
     if b is not None:
         from .logic.brightness import BrightnessConfig, check_config

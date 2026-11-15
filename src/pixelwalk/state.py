@@ -6,6 +6,7 @@ import threading
 from dataclasses import dataclass, replace
 from datetime import datetime
 
+from .logic.presence import PresenceView
 from .ports import SensorReading, Weather
 
 
@@ -14,6 +15,8 @@ class WorldSnapshot:
     sensors: SensorReading | None = None
     weather: Weather | None = None
     motion: bool = True
+    motion_available: bool = True  # False: no motion sensor, so the room counts as occupied
+    presence: PresenceView | None = None  # set by the main loop each frame
     last_motion_at: datetime | None = None
     pressure_trend: str = "steady"  # "worsening" | "steady" | "improving"
 

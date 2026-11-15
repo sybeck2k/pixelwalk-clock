@@ -6,16 +6,24 @@ hardware_mapping = "regular"
 gpio_slowdown = 2
 rotation = 270            # 0, 90, 180, 270 (Pi only)
 target_fps = 30
+max_brightness_pct = 100   # the panel's ceiling: the app works in 0..100 relative to this value
 show_refresh_rate = false  # the library prints this to stdout; leave off in the service
 
 [sensors]
 backend = "sim"           # sim | sysfs
 poll_interval_s = 1.0
+# Kernel driver files (sysfs). Any unreadable file just means "no reading".
+illuminance_path = "/sys/bus/i2c/devices/1-0010/illuminance"   # true lux
+lux_legacy_path = "/sys/bus/i2c/devices/1-0010/lux"            # kilolux; used only if the file above is missing
+temperature_path = "/sys/bus/i2c/devices/1-0038/temperature"   # indoor, degC
+humidity_path = "/sys/bus/i2c/devices/1-0038/humidity"
+pressure_path = "/sys/bus/i2c/devices/1-0077/pressure"         # hPa
 
 [motion]
 backend = "sim"           # sim | gpio
 chip = "gpiochip0"
 line = 16
+poll_hz = 5               # the PIR level is read this often (levels, not edges)
 
 [weather]
 backend = "sim"           # sim | openmeteo
@@ -54,3 +62,32 @@ on_above_lux = 0.0
 off_delay_s = 10.0      # light must stay below off_below_lux this long before the panel goes dark
 on_delay_s = 3.0
 wake_on_motion = false  # true: movement lights the display while it is dark
+
+[presence]
+idle_after_s = 300        # no motion this long: the robot sits by a campfire and sleeps, panel dims
+dark_after_s = 900        # no motion this long: panel off
+drowsy_factor = 0.5       # brightness multiplier while drowsy
+wake_s = 2.0              # the stretch when motion returns
+wake_ramp_s = 1.0         # brightness ramps back up over this long
+quiet_enabled = false     # quiet hours: dark when the room is empty, capped brightness otherwise
+quiet_start = "23:30"
+quiet_end = "06:30"
+quiet_cap_pct = 20
+quiet_empty_after_s = 30
+
+[hud]
+indoor = true             # indoor temperature, top-left
+outdoor = true            # outdoor temperature, top-right
+
+[hero]
+cold_c = 18               # indoor temperatures below / above these are shown in cyan / orange
+hot_c = 26
+
+[control]
+# Optional web page and API to change settings on the running app. OFF by default.
+# Anyone who can reach the port can change the display: keep host on 127.0.0.1, or set a token.
+enabled = false
+host = "127.0.0.1"        # "0.0.0.0" to reach it from another machine
+port = 8080
+token = ""                # if set, requests must send it (?token=... or X-Token header)
+settings_path = "state/settings.json"   # changes made while running are kept here across restarts

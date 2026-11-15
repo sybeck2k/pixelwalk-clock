@@ -51,8 +51,8 @@ class Sensors(Protocol):
 
 
 class MotionInput(Protocol):
-    def motion(self) -> bool:
-        """Current level of the PIR output."""
+    def motion(self) -> bool | None:
+        """Current level of the PIR output, or None if the sensor is unavailable."""
         ...
 
     def close(self) -> None: ...
