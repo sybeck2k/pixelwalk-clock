@@ -67,3 +67,28 @@ Ctrl-C; the panel is cleared on exit:
 
 It uses a simulated clock and simulated sensors and weather, so it does not depend on the real
 time, the network or the light sensor.
+
+## Settings and the control page on the Pi
+
+The panel library drops root after it starts, so the app then runs as user `daemon` and cannot
+write into `/home/ubuntu`. Two files are affected: `state/settings.json` (changes made on the
+control page) and `state/weather.json` (the weather cache). Until the service is installed
+(phase 7), changes still take effect immediately but only last until restart, and a warning is
+logged once. For persistence, create a folder `daemon` can write and point both at it in
+`/etc/pixelwalk/config.toml`:
+
+    sudo mkdir -p /var/lib/pixelwalk && sudo chown daemon /var/lib/pixelwalk
+
+    [control]
+    settings_path = "/var/lib/pixelwalk/settings.json"
+    [weather]
+    cache_path = "/var/lib/pixelwalk/weather.json"
+
+To reach the control page from your PC, enable it with a token and a host the network can reach:
+
+    [control]
+    enabled = true
+    host = "0.0.0.0"
+    token = "something-long"
+
+then browse to `http://<pi>:8080/?token=something-long`.

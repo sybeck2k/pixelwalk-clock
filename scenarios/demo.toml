@@ -20,7 +20,7 @@ wind_kmh = 5
 gust_kmh = 10
 
 [demo]
-length = 392
+length = 462
 loop = true
 
 # --- the clock and the time of day ---------------------------------------------------------
@@ -161,3 +161,31 @@ at = 380
 label = "Lights on again"
 time = "2026-07-02 12:30:00"
 lux = 300
+
+# --- presence: the room empties (demo mode shortens the timings: drowsy after 10 s, dark after 45 s) ----
+
+[[sim.timeline]]
+at = 392
+label = "Everyone leaves the room"
+time = "2026-07-02 12:30:00"
+motion = false
+
+[[sim.timeline]]
+at = 404
+label = "Drowsy: the robot sits by a campfire and the display dims"
+reset = false
+
+[[sim.timeline]]
+at = 424
+label = "...and falls asleep (the antenna light goes out, a z floats up)"
+reset = false
+
+[[sim.timeline]]
+at = 439
+label = "Still nobody: the display switches itself off"
+reset = false
+
+[[sim.timeline]]
+at = 449
+label = "Someone walks in: the display wakes, the robot stretches"
+motion = true

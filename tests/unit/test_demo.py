@@ -12,6 +12,7 @@ from pixelwalk.app import apply_demo_config, build_app, run
 from pixelwalk.config import load_config
 from pixelwalk.demo import Demo, DemoError, Step, parse_steps
 from pixelwalk.logic.director import Biome
+from pixelwalk.logic.presence import PresenceState as S
 
 ROOT = Path(__file__).resolve().parents[2]
 DEMO = ROOT / "scenarios" / "demo.toml"
@@ -139,7 +140,8 @@ def test_shipped_demo_script_is_valid_and_covers_the_features():
     demo = Demo.from_scenario(s)
     labels = " | ".join(st.label.lower() for st in demo.steps)
     for word in ("dawn", "dusk", "moon", "time-lapse", "partly", "overcast", "drizzle", "rain", "heavy",
-                 "thunder", "fog", "barometer", "snow", "pipe", "desert", "hour change", "dim", "lights out", "lights on"):
+                 "thunder", "fog", "barometer", "snow", "pipe", "desert", "hour change", "dim", "lights out", "lights on",
+                 "leaves", "campfire", "asleep", "switches itself off", "walks in"):
         assert word in labels, word
     assert 300 <= demo.length <= 600 and demo.loop  # minutes long, and it repeats
     conditions = {st.values.get("weather") for st in demo.steps}
@@ -154,10 +156,12 @@ def test_demo_config_enables_what_the_script_needs():
     apply_demo_config(cfg)
     assert cfg["clock"]["backend"] == "sim" and cfg["director"]["min_stay_s"] <= 8
     assert cfg["brightness"]["off_below_lux"] == 5.0 and cfg["brightness"]["on_above_lux"] == 12.0
+    assert (cfg["presence"]["idle_after_s"], cfg["presence"]["dark_after_s"]) == (10.0, 45.0)
     mine = load_config(ROOT / "config", "dev")
     mine["brightness"].update(off_below_lux=0.7, on_above_lux=2.0)  # the owner's own thresholds win
+    mine["presence"].update(idle_after_s=60.0, dark_after_s=600.0)
     apply_demo_config(mine)
-    assert mine["brightness"]["off_below_lux"] == 0.7
+    assert mine["brightness"]["off_below_lux"] == 0.7 and mine["presence"]["idle_after_s"] == 60.0
 
 
 class FakeTime:
@@ -207,15 +211,18 @@ def test_whole_demo_runs_headless_and_every_scene_happens(tmp_path, caplog):
     app.display = disp
 
     biomes_seen = []
+    presence_seen = []
     caplog.set_level(logging.INFO, logger="pixelwalk")
 
-    frames = (392 + 20) * 10  # one full round plus the start of the next, at 10 frames/s
+    frames = int((app.demo.length + 20) * 10)  # one full round plus the start of the next, at 10 frames/s
     app.target_fps = 10.0
     n = 0
     while n < frames:
         run(app, max_frames=10, sleep=ft.sleep)
         n += 10
         biomes_seen.append(app.renderer.biome)
+        if app.state.snapshot().presence is not None:
+            presence_seen.append(app.state.snapshot().presence.state)
     labels = [r.getMessage() for r in caplog.records if r.getMessage().startswith("demo: ")]
 
     n_steps = len(app.demo.steps)
@@ -223,5 +230,7 @@ def test_whole_demo_runs_headless_and_every_scene_happens(tmp_path, caplog):
     assert len(labels) > n_steps and labels[n_steps].startswith("demo: Noon")  # then it loops
     assert Biome.SNOW in biomes_seen and Biome.DESERT in biomes_seen and biomes_seen[0] is Biome.GRASS
     assert biomes_seen.index(Biome.SNOW) < biomes_seen.index(Biome.DESERT)
+    order = [s for i, s in enumerate(presence_seen) if i == 0 or s != presence_seen[i - 1]]
+    assert order[:5] == [S.ACTIVE, S.DROWSY, S.DARK, S.WAKING, S.ACTIVE]  # the empty room, in order
     assert 0 in disp.history and disp.history[-1] > 0 and max(disp.history) >= 80  # dimmed, dark, bright
     assert disp.dark_black >= 1 and disp.shown > 1500  # rendered a long show, and blacked out once

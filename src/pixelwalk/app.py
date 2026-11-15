@@ -25,6 +25,7 @@ from .logic.brightness import BrightnessConfig, BrightnessController
 from .logic.presence import Presence, PresenceConfig
 from .ports import Clock, Display, MotionInput, Sensors, WeatherSource
 from .render.renderer import Renderer
+from .settings import RuntimeSettings, apply_settings
 from .state import WorldState
 
 log = logging.getLogger("pixelwalk")
@@ -45,6 +46,9 @@ class App:
     background: list[Any] = field(default_factory=list)  # objects with start() and stop()
     scenario: Scenario | None = None
     demo: Demo | None = None
+    settings: RuntimeSettings | None = None  # parameters that can be changed while running
+    applied_version: int = -1  # the settings version the components currently reflect
+    status: dict[str, Any] = field(default_factory=dict)  # what the display is doing, for the control page
     target_fps: float = 30.0
 
     DARK_POLL_S = 0.5  # while the panel is dark: no rendering, just check the inputs twice a second
@@ -79,12 +83,15 @@ def build_display(cfg: dict[str, Any]) -> Display:
 
 def apply_demo_config(cfg: dict[str, Any]) -> dict[str, Any]:
     """Settings that make a demo watchable: a simulated clock the script can set, quick biome
-    changes, and dark mode switched on (unless already configured) so the script can show it."""
+    changes, dark mode switched on and short presence timings (each unless you configured your own)."""
     cfg["clock"]["backend"] = "sim"
     cfg["director"]["min_stay_s"] = min(cfg["director"]["min_stay_s"], 8)
     b = cfg["brightness"]
     if b.get("off_below_lux", 0) <= 0:
         b.update(off_below_lux=5.0, on_above_lux=12.0, off_delay_s=2.0, on_delay_s=1.5)
+    pr = cfg["presence"]
+    if pr.get("idle_after_s") == 300 and pr.get("dark_after_s") == 900:  # still the defaults: shorten
+        pr.update(idle_after_s=10.0, dark_after_s=45.0)
     return cfg
 
 
@@ -180,7 +187,7 @@ def build_app(
     # The application works in 0..100 relative brightness; the ceiling maps that onto the panel.
     display = ScaledDisplay(build_display(cfg), d["max_brightness_pct"])
 
-    return App(
+    app = App(
         clock=clock,
         display=display,
         sensors=sensors,
@@ -195,6 +202,34 @@ def build_app(
         demo=Demo.from_scenario(scenario) if demo else None,
         target_fps=float(d["target_fps"]),
     )
+    ctl = cfg["control"]
+    # Settings changed while running are remembered in a small file and applied from the start.
+    app.settings = RuntimeSettings(cfg, root / ctl["settings_path"] if ctl.get("settings_path") else None)
+    apply_settings(app, app.settings.values())
+    app.applied_version = app.settings.version
+    if ctl.get("enabled"):
+        from .control import ControlServer
+
+        app.background.append(ControlServer(app, ctl["host"], ctl["port"], ctl.get("token", "")))
+    return app
+
+
+def _status(app: App, snap: Any, presence: Any, demo_label: str) -> dict[str, Any]:
+    """A small picture of what the display is doing, for the control page."""
+    w, s = snap.weather, snap.sensors
+    return {
+        "time": app.clock.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "brightness_relative": getattr(app.display, "relative", None),
+        "brightness_panel": getattr(app.display, "absolute", None),
+        "presence": presence.state.name.lower(),
+        "biome": getattr(getattr(app.renderer, "biome", None), "value", None),
+        "weather": w.condition.name.lower() if w else None,
+        "outdoor_c": round(w.temperature_c, 1) if w else None,
+        "indoor_c": round(s.temperature_c, 1) if s and s.temperature_c is not None else None,
+        "lux": round(s.lux, 2) if s and s.lux is not None else None,
+        "pressure_trend": snap.pressure_trend,
+        "demo": demo_label,
+    }
 
 
 def _poll_inputs(app: App, t: float) -> None:
@@ -233,6 +268,8 @@ def run(
     next_poll = 0.0
     shown_pct: int | None = None
     black_shown = False
+    next_status = 0.0
+    last_demo = ""
     # Raw bytes of the last frame pushed to the display; None forces the next push. A fresh run()
     # starts with None, so the first frame (and any restart after re-initialising) always goes out.
     last_pushed: bytes | None = None
@@ -242,11 +279,17 @@ def run(
         if app.demo is not None and app.scenario is not None:
             for step in app.demo.due(app.demo.elapsed(t0)):
                 app.demo.apply(step, app.scenario, app.clock)
-                log.info("demo: %s", step.label or f"step at {step.at:g} s")
+                last_demo = step.label or f"step at {step.at:g} s"
+                log.info("demo: %s", last_demo)
                 next_poll = 0.0  # read the new values right away
         if t0 >= next_poll:
             _poll_inputs(app, t0)
             next_poll = t0 + 1.0
+        if app.settings is not None and app.settings.version != app.applied_version:
+            version = app.settings.version  # read first: a change during the copy is picked up next pass
+            apply_settings(app, app.settings.values())
+            app.applied_version = version
+            last_pushed = None  # e.g. a new brightness ceiling only reaches pixels set afterwards
         snap = app.state.snapshot()
         lux = snap.sensors.lux if snap.sensors else None
         presence = app.presence.update(
@@ -255,6 +298,9 @@ def run(
         pct = app.brightness.update(t0, lux, snap.motion, factor=presence.factor, cap_pct=presence.cap_pct)
         app.state.update(presence=presence)  # kept in the shared state for the status page
         snap = replace(snap, presence=presence)
+        if t0 >= next_status:
+            app.status = _status(app, snap, presence, last_demo)
+            next_status = t0 + 1.0
         if pct != shown_pct:
             app.display.set_brightness(pct)
             shown_pct = pct

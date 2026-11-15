@@ -84,3 +84,53 @@ seconds after the start. A step can set the simulated clock (`time`, `speed`) an
 scenario value (`weather`, `outdoor_c`, `gust_kmh`, `lux`, `pressure_trend`, ...). Every step
 starts from the `[sim]` values, so nothing leaks between steps. Demo mode switches to a simulated
 clock, shortens the biome minimum stay to 8 s and turns on dark mode (your own settings win).
+
+## Presence, status row and the robot's rest
+
+When nobody moves for `presence.idle_after_s` (5 minutes) the robot sits by a campfire, falls
+asleep (a "z" floats up) and the display dims to `presence.drowsy_factor`. After
+`presence.dark_after_s` (15 minutes) the panel goes fully off. Movement wakes it: the robot
+stretches and the brightness ramps back over a second. Optional quiet hours
+(`presence.quiet_*`) switch the panel off sooner when the room is empty and cap the brightness
+when it is not. With no motion sensor the room counts as always occupied. The top row shows the
+indoor temperature (top-left; cyan below `hero.cold_c`, orange above `hero.hot_c`) and the outdoor
+temperature (top-right); each can be switched off under `[hud]`.
+
+Real sensors are read from the kernel drivers' sysfs files (`sensors.backend = "sysfs"`; any
+unreadable file just means "no reading") and the PIR from a GPIO line with libgpiod
+(`motion.backend = "gpio"`, both the 1.x and 2.x Python APIs work). The demo (`--demo`) shows
+the whole sleep-and-wake sequence with shortened timings.
+
+## Maximum brightness
+
+`display.max_brightness_pct` is the panel's ceiling. The application works in 0-100 *relative* to
+it: with a ceiling of 60, the app's "100%" is 60% on the panel, its 50% is 30%, and 0 is still off.
+The brightness curve (`brightness.*`) and presence dimming are all relative values.
+
+## Changing settings while it runs
+
+Every tunable (ceiling, brightness curve, dark mode, presence timings, quiet hours, status row,
+cold/hot thresholds, 12/24 h, biome minimum stay) can be changed on the running app. Changes
+are validated together (a request with one bad value changes nothing), applied within a frame,
+and remembered in `state/settings.json` so they survive a restart; "Reset" returns to the config
+file. Turn on the control page in `config/local.toml`:
+
+    [control]
+    enabled = true
+    port = 8080
+    # host = "127.0.0.1"   # only this machine (the default)
+    # host = "0.0.0.0"     # reachable from your network: set a token too
+    # token = "something-long"
+
+Then open http://localhost:8080 (add `?token=...` if you set one). The page shows what the display
+is doing right now, lets you change every setting, and, when the simulated backends are in use,
+lets you change the weather, temperatures, light, motion and the clock to try things out. There is
+also a JSON API (`GET/POST /api/params`, `POST /api/reset`, `GET /api/state`,
+`GET/POST /api/scenario`), for example:
+
+    curl -X POST localhost:8080/api/params -H "Content-Type: application/json" \
+         -d '{"display.max_brightness_pct": 60}'
+
+**Security:** there is no login. Anyone who can reach the port can change the display, so it is
+off by default, listens on 127.0.0.1 unless you change it, and logs a warning if you expose it
+without a token.
