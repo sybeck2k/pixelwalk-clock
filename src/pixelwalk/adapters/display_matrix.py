@@ -7,6 +7,8 @@ are loaded: once the matrix starts, the process may drop root and lose access to
 
 from __future__ import annotations
 
+import time
+
 from PIL import Image
 
 VALID_ROTATIONS = (0, 90, 180, 270)
@@ -41,10 +43,14 @@ class MatrixDisplay:
         self._matrix = RGBMatrix(options=opts)
         self._canvas = self._matrix.CreateFrameCanvas()
         self._brightness = 100
+        # Timing of the last show(), so tools can tell work from the (idle) vsync wait.
+        self.last_push_s = 0.0  # SetImage / Clear: the real work
+        self.last_swap_s = 0.0  # SwapOnVSync: blocks until the panel finishes a refresh
 
     def show(self, frame: Image.Image) -> None:
         if frame.size != (self.width, self.height) or frame.mode != "RGB":
             raise ValueError(f"frame must be RGB {self.width}x{self.height}, got {frame.mode} {frame.size}")
+        t0 = time.perf_counter()
         if self._brightness <= 0:
             # The library's minimum brightness is 1, so "dark" means a cleared canvas.
             self._canvas.Clear()
@@ -52,7 +58,10 @@ class MatrixDisplay:
             # Brightness only affects pixels set afterwards, so set it before SetImage.
             self._canvas.brightness = self._brightness
             self._canvas.SetImage(frame)
+        t1 = time.perf_counter()
         self._canvas = self._matrix.SwapOnVSync(self._canvas)
+        self.last_push_s = t1 - t0
+        self.last_swap_s = time.perf_counter() - t1
 
     def set_brightness(self, percent: int) -> None:
         self._brightness = max(0, min(100, int(percent)))

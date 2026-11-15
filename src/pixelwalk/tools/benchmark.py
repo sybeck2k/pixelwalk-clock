@@ -4,7 +4,9 @@
     python -m pixelwalk.tools.benchmark --show --profile pi-check --seconds 30 --fps 30   # on the Pi
 
 With --show the frames go to the configured display backend, paced at --fps like the real loop.
-Budget on the Pi: compose + show under 10 ms at the 99th percentile, with no late frames.
+Budget on the Pi: compose + SetImage ("work") under 10 ms at the 99th percentile, with no late
+frames. SwapOnVSync blocks until the panel finishes a refresh (about 10 ms at 100 Hz); that is
+idle waiting, not work, so it is reported separately when the display exposes it.
 Do not run other heavy work on the Pi while measuring: it lowers the panel refresh rate.
 """
 
@@ -45,6 +47,9 @@ def run(
     snap = WorldSnapshot()
     compose: list[float] = []
     show: list[float] = []
+    push: list[float] = []  # SetImage only (displays that expose last_push_s)
+    wait: list[float] = []  # vsync wait
+    work: list[float] = []  # compose + push: what the budget is about
     total: list[float] = []
     late = 0
     period = 1.0 / fps if fps else 0.0
@@ -59,6 +64,11 @@ def run(
         t2 = perf()
         compose.append((t1 - frame_start) * 1000)
         show.append((t2 - t1) * 1000)
+        split = display is not None and hasattr(display, "last_push_s")
+        if split:
+            push.append(display.last_push_s * 1000)
+            wait.append(display.last_swap_s * 1000)
+        work.append(compose[-1] + (push[-1] if split else show[-1]))
         total.append((t2 - frame_start) * 1000)
         if fps:
             deadline = frame_start + period
@@ -70,6 +80,9 @@ def run(
     return {
         "compose": summarize(compose),
         "show": summarize(show) if display is not None else None,
+        "push": summarize(push) if push else None,
+        "vsync wait": summarize(wait) if wait else None,
+        "work": summarize(work),
         "total": summarize(total),
         "late": late,
         "frames": frames,
@@ -79,14 +92,14 @@ def run(
 
 def report(r: dict) -> str:
     lines = [f"{'':10} {'median':>8} {'p99':>8} {'max':>8}   (ms)"]
-    for key in ("compose", "show", "total"):
+    for key in ("compose", "push", "vsync wait", "show", "work", "total"):
         if r[key] is not None:
             m, p, x = r[key]
             lines.append(f"{key:10} {m:8.2f} {p:8.2f} {x:8.2f}")
     lines.append(f"frames {r['frames']}, late {r['late']}, achieved {r['achieved_fps']:.2f} fps")
-    p99 = r["total"][1]
+    p99 = r["work"][1]
     verdict = "PASS" if p99 < BUDGET_P99_MS and r["late"] == 0 else "FAIL"
-    lines.append(f"budget: total p99 < {BUDGET_P99_MS:.0f} ms and no late frames -> {verdict}")
+    lines.append(f"budget: work (compose + push) p99 < {BUDGET_P99_MS:.0f} ms and no late frames -> {verdict}")
     return "\n".join(lines)
 
 

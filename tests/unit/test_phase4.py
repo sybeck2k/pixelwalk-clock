@@ -251,3 +251,29 @@ def test_shipped_palettes_do_not_collapse_at_night_and_10_percent():
             parse_start(when) + timedelta(0),
         ).copy()
         assert collapsed_pairs(f, 10) == [], when
+
+
+def test_benchmark_budget_uses_work_not_the_vsync_wait():
+    from pixelwalk.render.renderer import Renderer
+
+    class VsyncDisplay:
+        """Like MatrixDisplay: tiny push, then a long blocking wait for the panel refresh."""
+
+        last_push_s = 0.0015
+        last_swap_s = 0.0095
+
+        def show(self, img):
+            pass
+
+    r = Renderer(ROOT / "assets" / "src")
+    ticks = iter(range(100_000))
+    # Each perf() call advances 6 ms, so compose and total look slow, but push is 1.5 ms.
+    result = run(r, "2026-07-01 12:00:00", 10, VsyncDisplay(), fps=30, sleep=lambda s: None,
+                 perf=lambda: next(ticks) * 0.006)
+    assert result["push"] is not None and result["vsync wait"] is not None
+    assert result["push"][0] == pytest.approx(1.5) and result["vsync wait"][0] == pytest.approx(9.5)
+    # work = compose (6 ms) + push (1.5 ms) = 7.5 ms, even though show() took 6 ms and total 12 ms
+    assert result["work"][0] == pytest.approx(7.5)
+    assert "vsync wait" in report(result)
+    assert "work (compose + push)" in report(result)
+    assert "PASS" in report(result)  # 7.5 ms < 10 ms, and no frame later than its 33 ms period
