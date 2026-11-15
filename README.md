@@ -67,3 +67,20 @@ the sky over even without a forecast.
 To review every condition and biome at once:
 
     .venv/Scripts/python -m pixelwalk.tools.contact_sheet --weather --out out/weather.png
+
+## Demo mode
+
+A scripted tour of the features, about 6.5 minutes, looping until you stop it (Ctrl-C):
+
+    .venv/Scripts/python -m pixelwalk --profile dev --demo        # then open http://localhost:8888
+
+It covers the clock bump and the hour change, dawn, dusk and night with the moon, two time-lapses,
+every weather condition, the snow and desert biomes through the pipe, the barometer, and the
+brightness range ending in fully off and back on. Each step's label is printed to the log.
+On the Pi (profile `pi-check`, see `deploy/README.md`) it runs on the real panel.
+
+The script is `scenarios/demo.toml`: a `[[sim.timeline]]` list of steps, each firing at `at`
+seconds after the start. A step can set the simulated clock (`time`, `speed`) and override any
+scenario value (`weather`, `outdoor_c`, `gust_kmh`, `lux`, `pressure_trend`, ...). Every step
+starts from the `[sim]` values, so nothing leaks between steps. Demo mode switches to a simulated
+clock, shortens the biome minimum stay to 8 s and turns on dark mode (your own settings win).

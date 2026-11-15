@@ -3,8 +3,9 @@ import logging
 import sys
 from pathlib import Path
 
-from .app import build_app, main_loop
+from .app import apply_demo_config, build_app, main_loop
 from .config import ConfigError, load_config
+from .demo import DemoError
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -15,6 +16,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--at", help='simulated start, e.g. "2026-12-24 21:30"')
     p.add_argument("--speed", type=float, help="simulated time speed multiplier")
     p.add_argument("--frames", type=int, help="stop after N frames")
+    p.add_argument(
+        "--demo", nargs="?", const="scenarios/demo.toml", metavar="SCENARIO",
+        help="play a scripted sequence of scenes (default scenarios/demo.toml); loops until stopped",
+    )
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args(argv)
 
@@ -25,8 +30,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     try:
         cfg = load_config(args.config_dir, args.profile, args.config)
-        app = build_app(cfg, args.config_dir.resolve().parent, args.at, args.speed)
-    except (ConfigError, NotImplementedError) as e:
+        root = args.config_dir.resolve().parent
+        if args.demo:
+            apply_demo_config(cfg)
+            cfg["sim"] = {**cfg.get("sim", {}), "scenario": args.demo}
+        app = build_app(cfg, root, args.at, args.speed, demo=bool(args.demo))
+    except (ConfigError, DemoError, NotImplementedError) as e:
         print(f"pixelwalk: {e}", file=sys.stderr)
         return 2
     main_loop(app, args.frames)

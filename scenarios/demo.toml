@@ -1,0 +1,163 @@
+# Demo mode: a scripted tour of the features, about 6.5 minutes, looping.
+#
+#   .venv/Scripts/python -m pixelwalk --profile dev --demo            (PC, http://localhost:8888)
+#   sudo env PYTHONPATH=src ~/led-venv/bin/python -m pixelwalk --profile pi-check --demo   (Pi)
+#
+# Times are real seconds from the start of the demo. Each step starts from the [sim] values below
+# and overrides only what it lists. Edit freely; the step labels are printed to the log.
+
+[sim]
+start = "2026-07-01 12:34:40"
+speed = 1.0
+lux = 250
+indoor_c = 21.5
+humidity = 45
+pressure_hpa = 1012
+motion = true
+weather = "CLEAR"
+outdoor_c = 18
+wind_kmh = 5
+gust_kmh = 10
+
+[demo]
+length = 392
+loop = true
+
+# --- the clock and the time of day ---------------------------------------------------------
+
+[[sim.timeline]]
+at = 0
+label = "Noon: the robot jumps and bumps the minute block as the minute changes"
+time = "2026-07-01 12:34:40"
+
+[[sim.timeline]]
+at = 25
+label = "Dawn"
+time = "2026-07-01 07:20:00"
+
+[[sim.timeline]]
+at = 37
+label = "Dusk"
+time = "2026-07-01 18:25:00"
+
+[[sim.timeline]]
+at = 49
+label = "Night with a thin waning moon and twinkling stars"
+time = "2026-07-12 23:10:00"
+
+[[sim.timeline]]
+at = 61
+label = "Evening time-lapse (600x): sunset, stars come out, the moon crosses the sky"
+time = "2026-07-01 17:00:00"
+speed = 600
+
+[[sim.timeline]]
+at = 111
+label = "Morning time-lapse (600x): stars fade, the sun rises"
+time = "2026-07-02 04:30:00"
+speed = 600
+
+# --- weather, at noon ----------------------------------------------------------------------
+
+[[sim.timeline]]
+at = 156
+label = "Partly cloudy"
+time = "2026-07-02 12:00:00"
+speed = 1
+weather = "PARTLY_CLOUDY"
+
+[[sim.timeline]]
+at = 166
+label = "Overcast: grey sky, no sun"
+weather = "OVERCAST"
+
+[[sim.timeline]]
+at = 176
+label = "Drizzle"
+weather = "DRIZZLE"
+
+[[sim.timeline]]
+at = 186
+label = "Rain: the robot opens an umbrella"
+weather = "RAIN"
+
+[[sim.timeline]]
+at = 198
+label = "Heavy rain"
+weather = "HEAVY_RAIN"
+
+[[sim.timeline]]
+at = 210
+label = "Thunderstorm with gusty wind (leaves blow)"
+weather = "THUNDER"
+gust_kmh = 60
+
+[[sim.timeline]]
+at = 225
+label = "Fog"
+weather = "FOG"
+
+[[sim.timeline]]
+at = 237
+label = "Barometer falling: clouds roll in even though the forecast says clear"
+weather = "CLEAR"
+pressure_trend = "worsening"
+
+# --- biomes and the pipe transition --------------------------------------------------------
+
+[[sim.timeline]]
+at = 249
+label = "Snow, -4 C: the robot walks through a pipe into the snowfield"
+weather = "SNOW"
+outdoor_c = -4
+gust_kmh = 50
+
+[[sim.timeline]]
+at = 271
+label = "Milder again: back through a pipe to the grassland"
+weather = "CLEAR"
+outdoor_c = 12
+
+[[sim.timeline]]
+at = 289
+label = "Heat, 35 C: a pipe into the desert"
+weather = "CLEAR"
+outdoor_c = 35
+
+[[sim.timeline]]
+at = 311
+label = "Desert wind"
+weather = "CLEAR"
+outdoor_c = 35
+gust_kmh = 60
+
+[[sim.timeline]]
+at = 323
+label = "Back to the grassland"
+weather = "CLEAR"
+outdoor_c = 18
+
+# --- more clock, then the light sensor -----------------------------------------------------
+
+[[sim.timeline]]
+at = 341
+label = "Hour change: both blocks get bumped, hour first"
+time = "2026-07-02 12:59:48"
+
+[[sim.timeline]]
+at = 356
+label = "Dim evening: the panel dims with the room light"
+time = "2026-07-02 21:30:00"
+lux = 8
+
+[[sim.timeline]]
+at = 366
+label = "Lights out: the panel goes completely dark"
+time = "2026-07-02 21:30:00"
+lux = 0.5
+
+[[sim.timeline]]
+at = 380
+label = "Lights on again"
+time = "2026-07-02 12:30:00"
+lux = 300

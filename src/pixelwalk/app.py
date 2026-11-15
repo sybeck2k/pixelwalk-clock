@@ -14,6 +14,7 @@ from typing import Any
 from PIL import Image
 
 from .adapters.scenario import Scenario, parse_start
+from .demo import Demo
 from .logic.barometer import Barometer
 from .logic.brightness import BrightnessConfig, BrightnessController
 from .ports import Clock, Display, MotionInput, Sensors, WeatherSource
@@ -36,6 +37,7 @@ class App:
     barometer: Barometer = field(default_factory=Barometer)
     background: list[Any] = field(default_factory=list)  # objects with start() and stop()
     scenario: Scenario | None = None
+    demo: Demo | None = None
     target_fps: float = 30.0
 
     DARK_POLL_S = 0.5  # while the panel is dark: no rendering, just check the inputs twice a second
@@ -68,11 +70,23 @@ def build_display(cfg: dict[str, Any]) -> Display:
     )
 
 
+def apply_demo_config(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Settings that make a demo watchable: a simulated clock the script can set, quick biome
+    changes, and dark mode switched on (unless already configured) so the script can show it."""
+    cfg["clock"]["backend"] = "sim"
+    cfg["director"]["min_stay_s"] = min(cfg["director"]["min_stay_s"], 8)
+    b = cfg["brightness"]
+    if b.get("off_below_lux", 0) <= 0:
+        b.update(off_below_lux=5.0, on_above_lux=12.0, off_delay_s=2.0, on_delay_s=1.5)
+    return cfg
+
+
 def build_app(
     cfg: dict[str, Any],
     root: Path,
     start: str | None = None,
     speed: float | None = None,
+    demo: bool = False,
 ) -> App:
     from .adapters.clock_sim import SimClock
     from .adapters.clock_system import SystemClock
@@ -138,6 +152,7 @@ def build_app(
         brightness=BrightnessController(BrightnessConfig.from_dict(cfg.get("brightness", {}))),
         background=background,
         scenario=scenario,
+        demo=Demo.from_scenario(scenario) if demo else None,
         target_fps=float(d["target_fps"]),
     )
 
@@ -157,8 +172,10 @@ def _poll_inputs(app: App, t: float) -> None:
         motion=moving,
         last_motion_at=now if moving else snap.last_motion_at,
     )
-    if app.barometer.maybe_sample(t, reading.pressure_hpa):  # one sample every 5 minutes
-        app.state.update(pressure_trend=app.barometer.trend())
+    app.barometer.maybe_sample(t, reading.pressure_hpa)  # one sample every 5 minutes
+    forced = app.scenario.values.get("pressure_trend") if app.scenario else ""
+    trend = forced if forced in ("worsening", "steady", "improving") else app.barometer.trend()
+    app.state.update(pressure_trend=trend)
 
 
 def run(
@@ -176,6 +193,11 @@ def run(
     black_shown = False
     while not should_stop() and (max_frames is None or frames < max_frames):
         t0 = app.clock.monotonic()
+        if app.demo is not None and app.scenario is not None:
+            for step in app.demo.due(app.demo.elapsed(t0)):
+                app.demo.apply(step, app.scenario, app.clock)
+                log.info("demo: %s", step.label or f"step at {step.at:g} s")
+                next_poll = 0.0  # read the new values right away
         if t0 >= next_poll:
             _poll_inputs(app, t0)
             next_poll = t0 + 1.0

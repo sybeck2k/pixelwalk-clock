@@ -19,6 +19,7 @@ DEFAULTS: dict[str, Any] = {
     "outdoor_c": 18.0,
     "wind_kmh": 5.0,
     "gust_kmh": 10.0,
+    "pressure_trend": "",  # "", "worsening", "steady" or "improving": forces the barometer trend
 }
 
 
@@ -36,6 +37,9 @@ class Scenario:
     def __init__(self, path: Path | None = None) -> None:
         self.path = path
         self.values: dict[str, Any] = dict(DEFAULTS)
+        self.base: dict[str, Any] = dict(DEFAULTS)  # the [sim] values, without any timeline step
+        self.timeline: list[dict[str, Any]] = []  # [[sim.timeline]]: timed changes (demo mode)
+        self.demo: dict[str, Any] = {}  # [demo]: length and loop for the timeline
         self._mtime: float | None = None
         self.refresh()
 
@@ -48,11 +52,15 @@ class Scenario:
             if mtime == self._mtime:
                 return False
             with self.path.open("rb") as f:
-                sim = tomllib.load(f).get("sim", {})
+                data = tomllib.load(f)
         except (OSError, tomllib.TOMLDecodeError):
             return False
+        sim = dict(data.get("sim", {}))
         self._mtime = mtime
-        self.values = {**DEFAULTS, **sim}
+        self.timeline = list(sim.pop("timeline", []))
+        self.demo = dict(data.get("demo", {}))
+        self.base = {**DEFAULTS, **sim}
+        self.values = dict(self.base)
         return True
 
     def __getitem__(self, key: str) -> Any:

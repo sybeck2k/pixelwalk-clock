@@ -57,3 +57,13 @@ library checkout:
     CFLAGS="-I<pillow-src>/src/libImaging" CMAKE_BUILD_PARALLEL_LEVEL=1 ~/led-venv/bin/pip install .
 
 About 5 minutes; keep the parallel level at 1 (the Pi has no swap).
+
+## Demo on the panel
+
+After copying the code (see above), a six-and-a-half-minute loop of the features. Stop it with
+Ctrl-C; the panel is cleared on exit:
+
+    cd ~/pixelwalk && sudo env PYTHONPATH=src ~/led-venv/bin/python -m pixelwalk --profile pi-check --demo
+
+It uses a simulated clock and simulated sensors and weather, so it does not depend on the real
+time, the network or the light sensor.
