@@ -79,7 +79,8 @@ def test_main_loop_runs_headless_and_populates_state():
     cfg["display"]["backend"] = "png"
     app = build_app(cfg, ROOT)
     n = run(app, max_frames=5, sleep=lambda s: None)
-    assert n == 5 and len(app.display.frames) == 5
+    # identical consecutive frames are not pushed, so 5 loop passes need not mean 5 displayed frames
+    assert n == 5 and 1 <= len(app.display.frames) <= 5
     snap = app.state.snapshot()
     assert snap.sensors.temperature_c == 21.5
     assert snap.weather is not None and snap.motion is True

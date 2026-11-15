@@ -11,7 +11,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from PIL import Image
+from PIL import (
+    Image,
+    ImageFile,  # noqa: F401  Image.tobytes() imports it lazily; after the privilege drop that import fails
+)
 
 from .adapters.scenario import Scenario, parse_start
 from .demo import Demo
@@ -191,6 +194,10 @@ def run(
     next_poll = 0.0
     shown_pct: int | None = None
     black_shown = False
+    # Raw bytes of the last frame pushed to the display; None forces the next push. A fresh run()
+    # starts with None, so the first frame (and any restart after re-initialising) always goes out.
+    last_pushed: bytes | None = None
+    skipped = 0  # composed but identical to the last push, so not sent; reset every report
     while not should_stop() and (max_frames is None or frames < max_frames):
         t0 = app.clock.monotonic()
         if app.demo is not None and app.scenario is not None:
@@ -207,26 +214,35 @@ def run(
         if pct != shown_pct:
             app.display.set_brightness(pct)
             shown_pct = pct
+            last_pushed = None  # the panel applies brightness only to pixels set afterwards
         if pct == 0:  # dark: show black once, then stop rendering until the light comes back
             if not black_shown:
                 app.display.show(Image.new("RGB", (app.display.width, app.display.height)))
                 black_shown = True
+            last_pushed = None  # the panel no longer shows a scene frame
             frames += 1
             sleep(app.DARK_POLL_S)
             continue
         black_shown = False
         frame = app.renderer.render(snap, t0, app.clock.now())
-        app.display.show(frame)
+        raw = frame.tobytes()
+        if raw == last_pushed:
+            skipped += 1  # nothing changed: leave the panel alone; the sleep below paces the loop
+        else:
+            app.display.show(frame)
+            last_pushed = raw
         frames += 1
         t1 = app.clock.monotonic()
         times.append((t1 - t0) * 1000)
-        if t1 - last_report >= 60 and log.isEnabledFor(logging.DEBUG):
-            s = sorted(times)
-            log.debug(
-                "frame ms median=%.2f p99=%.2f max=%.2f",
-                statistics.median(s), s[int(len(s) * 0.99) - 1], s[-1],
-            )
+        if t1 - last_report >= 60:
+            if log.isEnabledFor(logging.DEBUG):
+                s = sorted(times)
+                log.debug(
+                    "frame ms median=%.2f p99=%.2f max=%.2f, frames=%d skipped=%d",
+                    statistics.median(s), s[int(len(s) * 0.99) - 1], s[-1], len(s), skipped,
+                )
             times.clear()
+            skipped = 0
             last_report = t1
         sleep(max(0.0, period - (t1 - t0)))
     return frames
