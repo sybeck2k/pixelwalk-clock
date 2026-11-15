@@ -32,6 +32,11 @@ class App:
     target_fps: float = 30.0
 
 
+def _hhmm(text: str) -> float:
+    h, m = text.split(":")
+    return int(h) * 3600 + int(m) * 60
+
+
 def build_app(
     cfg: dict[str, Any],
     root: Path,
@@ -78,7 +83,12 @@ def build_app(
         weather=SimWeather(scenario, clock),
         state=WorldState(),
         renderer=Renderer(
-            root / "assets" / "src", d["cols"], d["rows"], hour24=cfg["clock"]["hour24"]
+            root / "assets" / "src",
+            d["cols"],
+            d["rows"],
+            hour24=cfg["clock"]["hour24"],
+            sunrise_s=_hhmm(cfg["clock"]["sunrise_fallback"]),
+            sunset_s=_hhmm(cfg["clock"]["sunset_fallback"]),
         ),
         scenario=scenario,
         target_fps=float(d["target_fps"]),

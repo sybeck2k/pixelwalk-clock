@@ -1,0 +1,65 @@
+# Sun and moon, 9x9. The moon file holds the five distinct phases; the renderer mirrors
+# waxing_gibbous, first_quarter and waxing_crescent to get the three waning phases.
+sprite sun 9x9
+frame sun
+..yyyyy..
+.ywwyyyY.
+yywyyyyYY
+yyyyyyyYY
+yyyyyyyYY
+yyyyyyYYY
+yyyyyyYYY
+.yyyyYYY.
+..yyYYY..
+
+sprite moon 9x9 distinct
+frame new
+..AAAAA..
+.AA...AA.
+A.......A
+A.......A
+A.......A
+A.......A
+A.......A
+.AA...AA.
+..AAAAA..
+frame waxing_crescent
+......l..
+......ll.
+.......ll
+......lll
+......lll
+......lll
+.......ll
+......ll.
+......l..
+frame first_quarter
+....lll..
+....llll.
+....lllll
+....lllll
+....lllll
+....lllll
+....lllll
+....llll.
+....lll..
+frame waxing_gibbous
+...llll..
+..llllll.
+.llllllll
+.llllllll
+.llllllll
+.llllllll
+.llllllll
+..llllll.
+...llll..
+frame full
+..lllll..
+.lllLlll.
+lllllllll
+lLLllllll
+lllllLLll
+lllllllll
+lllLlllll
+.lllllll.
+..lllll..

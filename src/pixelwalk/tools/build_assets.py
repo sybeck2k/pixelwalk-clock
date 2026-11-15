@@ -48,7 +48,8 @@ def lint(assets: Assets) -> tuple[list[str], list[str]]:
                     warnings.append(f"{where}: isolated pixel at ({x},{y})")
             if "ground" in s.flags and (not sets[i] or max(y for _, y in sets[i]) != s.height - 1):
                 errors.append(f"{where}: lowest opaque row is not the ground row {s.height - 1}")
-        if len(s.frames) > 1 and "glyphs" not in s.flags:
+        distinct = bool({"glyphs", "distinct"} & s.flags)
+        if len(s.frames) > 1 and not distinct:
             for i in range(len(s.frames)):
                 j = (i + 1) % len(s.frames)
                 diff = _pixel_diff(s.frames[i], s.frames[j])
@@ -56,7 +57,7 @@ def lint(assets: Assets) -> tuple[list[str], list[str]]:
                     errors.append(f"{s.name}: frames {s.labels[i]} and {s.labels[j]} are identical")
                 elif diff > s.width * s.height // 2:
                     warnings.append(f"{s.name}: frames {s.labels[i]}->{s.labels[j]} change {diff} px")
-        if "glyphs" in s.flags:
+        if distinct:
             for i, j in combinations(range(len(s.frames)), 2):
                 d = _pixel_diff(s.frames[i], s.frames[j])
                 if d < 3:

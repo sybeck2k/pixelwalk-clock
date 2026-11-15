@@ -1,7 +1,7 @@
 """Text-grid asset loading (spec section 14). One character per pixel, one palette.
 
 File format (assets/src/*.txt):
-    sprite NAME WxH [flags]     flags: ground (feet on last row), glyphs (font: pairwise distinct)
+    sprite NAME WxH [flags]     flags: ground (feet on last row), glyphs or distinct (every pair of frames differs by >= 3 px)
     frame [label]               followed by exactly H rows of exactly W characters
 Lines starting with '#' and blank lines are ignored.
 """

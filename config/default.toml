@@ -22,6 +22,8 @@ backend = "sim"           # sim | openmeteo
 [clock]
 backend = "sim"           # sim | system
 hour24 = true
+sunrise_fallback = "07:30"   # used until the weather source knows real sunrise/sunset
+sunset_fallback = "18:30"
 
 [sim]
 scenario = "scenarios/default.toml"
