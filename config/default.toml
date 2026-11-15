@@ -28,3 +28,20 @@ sunset_fallback = "18:30"
 
 [sim]
 scenario = "scenarios/default.toml"
+
+[brightness]
+# Light sensor units are relative (sysfs value * 1000). Logarithmic curve between the two.
+lux_low = 2.0
+lux_high = 400.0
+min_pct = 8
+max_pct = 100
+fallback_pct = 60       # used when the sensor has no reading; never turns the panel off
+smoothing_s = 3.0
+step_pct = 2            # ignore changes smaller than this, so the panel never visibly pumps
+# Fully off in the dark. DISABLED while off_below_lux = 0. The sensor also sees the panel's own
+# light, so tune both thresholds from real readings (panel on and off); on_above must be higher.
+off_below_lux = 0.0
+on_above_lux = 0.0
+off_delay_s = 10.0      # light must stay below off_below_lux this long before the panel goes dark
+on_delay_s = 3.0
+wake_on_motion = false  # true: movement lights the display while it is dark

@@ -50,6 +50,16 @@ def validate(cfg: dict[str, Any]) -> None:
             continue
         if value not in allowed:
             raise ConfigError(f"{dotted} = {value!r} is invalid; expected one of {sorted(allowed)}")
+    b = cfg.get("brightness")
+    if b is not None:
+        from .logic.brightness import BrightnessConfig, check_config
+
+        try:
+            problem = check_config(BrightnessConfig.from_dict(b))
+        except TypeError as e:
+            raise ConfigError(f"brightness: {e}") from None
+        if problem:
+            raise ConfigError(problem)
     fps = cfg.get("display", {}).get("target_fps", 30)
     if not isinstance(fps, (int, float)) or fps <= 0:
         raise ConfigError(f"display.target_fps = {fps!r} must be a positive number")

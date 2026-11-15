@@ -11,7 +11,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
+
 from .adapters.scenario import Scenario, parse_start
+from .logic.brightness import BrightnessConfig, BrightnessController
 from .ports import Clock, Display, MotionInput, Sensors, WeatherSource
 from .render.renderer import Renderer
 from .state import WorldState
@@ -28,8 +31,11 @@ class App:
     weather: WeatherSource
     state: WorldState
     renderer: Renderer
+    brightness: BrightnessController
     scenario: Scenario | None = None
     target_fps: float = 30.0
+
+    DARK_POLL_S = 0.5  # while the panel is dark: no rendering, just check the inputs twice a second
 
 
 def _hhmm(text: str) -> float:
@@ -106,6 +112,7 @@ def build_app(
         weather=SimWeather(scenario, clock),
         state=WorldState(),
         renderer=renderer,
+        brightness=BrightnessController(BrightnessConfig.from_dict(cfg.get("brightness", {}))),
         scenario=scenario,
         target_fps=float(d["target_fps"]),
     )
@@ -137,13 +144,28 @@ def run(
     times: list[float] = []
     last_report = app.clock.monotonic()
     next_poll = 0.0
-    app.display.set_brightness(100)
+    shown_pct: int | None = None
+    black_shown = False
     while not should_stop() and (max_frames is None or frames < max_frames):
         t0 = app.clock.monotonic()
         if t0 >= next_poll:
             _poll_inputs(app)
             next_poll = t0 + 1.0
-        frame = app.renderer.render(app.state.snapshot(), t0, app.clock.now())
+        snap = app.state.snapshot()
+        lux = snap.sensors.lux if snap.sensors else None
+        pct = app.brightness.update(t0, lux, snap.motion)
+        if pct != shown_pct:
+            app.display.set_brightness(pct)
+            shown_pct = pct
+        if pct == 0:  # dark: show black once, then stop rendering until the light comes back
+            if not black_shown:
+                app.display.show(Image.new("RGB", (app.display.width, app.display.height)))
+                black_shown = True
+            frames += 1
+            sleep(app.DARK_POLL_S)
+            continue
+        black_shown = False
+        frame = app.renderer.render(snap, t0, app.clock.now())
         app.display.show(frame)
         frames += 1
         t1 = app.clock.monotonic()
