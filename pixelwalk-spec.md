@@ -112,21 +112,30 @@ by any user. No I2C library is needed.
 
 | Reading | File | Format | Notes |
 |---|---|---|---|
-| Light | `/sys/bus/i2c/devices/1-0010/lux` | decimal, e.g. `0.007` | VEML7700. **Relative only**: scaling is off by a constant factor. Multiply by 1000 to get the "lux units" used below |
+| Light | `/sys/bus/i2c/devices/1-0010/illuminance` | true lux, 3 decimals, e.g. `1.852` | VEML7700, fixed driver (delta-01 D1). **Absolute** lux at typical Vishay accuracy, auto-ranging, about 0.004 lx resolution in the dark. The legacy `lux` file is now kilolux (`illuminance`/1000); do not use it |
 | Indoor temperature | `/sys/bus/i2c/devices/1-0038/temperature` | °C, 3 decimals | AHT20. Use this one for display |
 | Humidity | `/sys/bus/i2c/devices/1-0038/humidity` | %RH, 3 decimals | AHT20 |
 | Pressure | `/sys/bus/i2c/devices/1-0077/pressure` | hPa, 2 decimals | BMP280 |
 | Board-side temperature | `/sys/bus/i2c/devices/1-0077/temp` | °C, 2 decimals | BMP280; reads about 1 °C warm. Not displayed |
 
+- **Errors (all three drivers, delta-01 D7):** a read fails with `OSError` (EAGAIN before the
+  first sample after load, EIO if the last read failed or no valid sample arrived for
+  max(5 x poll, 5 s)). The app treats any `OSError` as "no reading" and keeps its last value;
+  no staleness heuristics or boot-zero guards are needed.
 - Motion: a PIR module on **BCM GPIO16** (physical pin 36, `gpiochip0` line 16). High means
   motion. The module's own hold time is unknown.
-- The old prototype mapped 0 to 400 lux units linearly onto 10% to 100% brightness. That is the
-  only calibration available; treat it as a starting point.
+- The old prototype mapped 0 to 400 "lux units" (the old driver's relative scale) linearly onto
+  10% to 100% brightness. The new driver reports true lux, about 20% lower than the old scale
+  below 100 lx and different above, so that mapping is only a rough starting point.
+  Reference readings (delta-01 D1.4): evening room 1.9 to 2.7 lx, sensor covered by a hand
+  0.45 to 0.53 lx, phone torch up to 2,129 lx.
 
 ### 3.4 Known risks on the Pi
 
-- The sensor drivers are built for the exact running kernel. A kernel update removes all three
-  sensors until they are rebuilt. The app must treat a missing sensor file as "no reading".
+- The sensor drivers are now managed by DKMS and rebuild on kernel updates (delta-01 D2), and
+  the Pi has been rebooted onto kernel 6.8.0-1068 with all three sensors and the panel verified.
+  A kernel update could still leave a sensor missing if a build fails, so the app must treat a
+  missing sensor file as "no reading".
 - 900 MB of RAM and no swap: keep memory use modest and avoid heavy builds on the Pi.
 - A `pir_sensor` systemd service currently holds GPIO16. It must be stopped and disabled before
   the app can read the pin (section 11).
@@ -230,7 +239,7 @@ class Display(Protocol):
 ```python
 @dataclass(frozen=True)
 class SensorReading:
-    lux: float | None            # "lux units" = sysfs value * 1000
+    lux: float | None            # true lux, from the sysfs `illuminance` file
     temperature_c: float | None  # AHT20
     humidity_pct: float | None
     pressure_hpa: float | None
@@ -611,7 +620,13 @@ by table-driven tests. Unknown inputs never crash it; each has a default.
    more, so the panel never visibly steps or pumps.
 
 Defaults (proposed): `lux_low = 2`, `lux_high = 400`, `min_pct = 8`, `max_pct = 100`.
-If lux is unknown, use `fallback_pct = 60`.
+If lux is unknown, use `fallback_pct = 60`. These were chosen for the old driver's relative
+scale; the input is now true lux, so re-tune them on the Pi.
+
+Optional dark mode: the panel goes fully off below `off_below_lux` (after `off_delay_s`) and
+back on above `on_above_lux` (after `on_delay_s`). Disabled by default (`off_below_lux = 0`)
+until the thresholds are measured on the Pi with the panel both on and off. Built in
+`logic/brightness.py`.
 
 The light sensor may see the panel's own light. If brightness oscillates in a dark room on the
 real hardware, shield the sensor first; only then consider a software correction.
@@ -880,5 +895,6 @@ cannot tell you, and both can force changes to the art.
 - Sounds through the USB audio adapter (for example a chime on the hour).
 - More biomes and a richer event set.
 - A small web page for the scenario controls instead of editing a file.
-- Proper lux calibration of the VEML7700 driver.
-- Switching the sensors to mainline kernel drivers so kernel updates do not break them.
+- ~~Proper lux calibration of the VEML7700 driver~~ (done: the fixed driver reports true lux).
+- ~~Switching the sensors to mainline kernel drivers~~ (rejected by the owner; DKMS rebuilds the
+  custom drivers, delta-01 D0).

@@ -37,7 +37,7 @@ class Display(Protocol):
 
 @dataclass(frozen=True)
 class SensorReading:
-    lux: float | None  # "lux units" = sysfs value * 1000
+    lux: float | None  # true lux (sysfs `illuminance`)
     temperature_c: float | None
     humidity_pct: float | None
     pressure_hpa: float | None
