@@ -7,3 +7,4 @@ __pycache__/
 config/local.toml
 emulator_config.json.bak
 out/
+assets/build/

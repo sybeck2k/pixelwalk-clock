@@ -1,0 +1,82 @@
+# Clock digits, 5x7. Ink is 'k'; the renderer uses each glyph as a mask.
+sprite font5x7 5x7 glyphs
+frame 0
+.kkk.
+k...k
+k...k
+k...k
+k...k
+k...k
+.kkk.
+frame 1
+..k..
+.kk..
+k.k..
+..k..
+..k..
+..k..
+kkkkk
+frame 2
+.kkk.
+k...k
+....k
+...k.
+..k..
+.k...
+kkkkk
+frame 3
+.kkk.
+k...k
+....k
+..kk.
+....k
+k...k
+.kkk.
+frame 4
+...k.
+..kk.
+.k.k.
+k..k.
+kkkkk
+...k.
+...k.
+frame 5
+kkkkk
+k....
+kkkk.
+....k
+....k
+k...k
+.kkk.
+frame 6
+.kkk.
+k....
+k....
+kkkk.
+k...k
+k...k
+.kkk.
+frame 7
+kkkkk
+....k
+...k.
+..k..
+.k...
+.k...
+.k...
+frame 8
+.kkk.
+k...k
+k...k
+.kkk.
+k...k
+k...k
+.kkk.
+frame 9
+.kkk.
+k...k
+k...k
+.kkkk
+....k
+....k
+.kkk.

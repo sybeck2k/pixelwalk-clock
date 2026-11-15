@@ -1,0 +1,36 @@
+# 8x8 ground tiles and the 19x13 clock block.
+sprite ground 8x8
+frame a
+gggGgggg
+GGGGGGGG
+dddddddd
+ddDddddd
+dddddddD
+dDdddddd
+dddddDdd
+DDDDDDDD
+frame b
+ggggggGg
+GGGGGGGG
+dddddddd
+dddDdddd
+Dddddddd
+dddddDdd
+ddDddddd
+DDDDDDDD
+
+sprite clock_block 19x13
+frame block
+.kkkkkkkkkkkkkkkkk.
+kwwwwwwwwwwwwwwwwwk
+klllllllllllllllllk
+klllllllllllllllllk
+klllllllllllllllllk
+klllllllllllllllllk
+klllllllllllllllllk
+klllllllllllllllllk
+klllllllllllllllllk
+klllllllllllllllllk
+klllllllllllllllllk
+kLLLLLLLLLLLLLLLLLk
+.kkkkkkkkkkkkkkkkk.

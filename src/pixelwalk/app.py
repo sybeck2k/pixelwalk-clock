@@ -77,7 +77,9 @@ def build_app(
         motion=SimMotionInput(scenario),
         weather=SimWeather(scenario, clock),
         state=WorldState(),
-        renderer=Renderer(d["cols"], d["rows"]),
+        renderer=Renderer(
+            root / "assets" / "src", d["cols"], d["rows"], hour24=cfg["clock"]["hour24"]
+        ),
         scenario=scenario,
         target_fps=float(d["target_fps"]),
     )
@@ -115,7 +117,7 @@ def run(
         if t0 >= next_poll:
             _poll_inputs(app)
             next_poll = t0 + 1.0
-        frame = app.renderer.render(app.state.snapshot(), t0)
+        frame = app.renderer.render(app.state.snapshot(), t0, app.clock.now())
         app.display.show(frame)
         frames += 1
         t1 = app.clock.monotonic()

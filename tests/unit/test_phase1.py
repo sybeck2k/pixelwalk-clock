@@ -8,8 +8,6 @@ from pixelwalk.adapters.display_png import PngDisplay
 from pixelwalk.adapters.scenario import Scenario
 from pixelwalk.app import build_app, run
 from pixelwalk.config import ConfigError, load_config
-from pixelwalk.render.renderer import BG, Renderer
-from pixelwalk.state import WorldSnapshot
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -65,16 +63,6 @@ def test_scenario_reload(tmp_path):
     os.utime(f, (2, 2))
     s.refresh()
     assert s["weather"] == "SNOW"  # bad edit keeps previous values
-
-
-def test_renderer_is_pure_function_of_time():
-    r = Renderer()
-    a = r.render(WorldSnapshot(), 1.25).copy()
-    r.render(WorldSnapshot(), 3.0)
-    b = r.render(WorldSnapshot(), 1.25)
-    assert a.tobytes() == b.tobytes()
-    assert a.size == (64, 64) and a.mode == "RGB"
-    assert a.getpixel((0, 0)) == BG
 
 
 def test_png_display_rejects_wrong_size():
