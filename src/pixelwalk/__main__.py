@@ -9,7 +9,7 @@ from .config import ConfigError, load_config
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="pixelwalk")
-    p.add_argument("--profile", default="dev", choices=["dev", "pi"])
+    p.add_argument("--profile", default="dev", choices=["dev", "pi", "pi-check"])
     p.add_argument("--config", type=Path, help="local override TOML (default config/local.toml)")
     p.add_argument("--config-dir", type=Path, default=Path("config"))
     p.add_argument("--at", help='simulated start, e.g. "2026-12-24 21:30"')

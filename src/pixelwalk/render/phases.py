@@ -32,6 +32,12 @@ TINT: dict[Phase, tuple[RGB, float, float]] = {
 }
 
 
+# Hand-picked exceptions where the formula leaves two touching colours too close for the panel
+# at low brightness (found with tools/led_preview.py; at 10% there are only ~23 levels).
+OVERRIDES: dict[Phase, dict[str, RGB]] = {
+    Phase.NIGHT: {"D": (28, 20, 50)},  # dark dirt vs dirt in the ground speckle
+}
+
 # Characters get a gentler version so they stay readable against the darkened scenery.
 ACTOR_TINT: dict[Phase, tuple[RGB, float, float]] = {
     Phase.DAY: ((0, 0, 0), 0.0, 1.0),
@@ -47,6 +53,8 @@ def phase_palette(master: dict[str, RGB], phase: Phase, actor: bool = False) -> 
     for ch, (r, g, b) in master.items():
         c = (r * bright, g * bright, b * bright)
         out[ch] = tuple(round(v + (t - v) * strength) for v, t in zip(c, tint, strict=True))  # type: ignore[assignment]
+    if not actor:
+        out.update(OVERRIDES.get(phase, {}))
     if phase in SKY and not actor:
         for ch, col in zip("1234", SKY[phase], strict=True):
             out[ch] = _hex(col)

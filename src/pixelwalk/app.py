@@ -37,6 +37,28 @@ def _hhmm(text: str) -> float:
     return int(h) * 3600 + int(m) * 60
 
 
+def build_display(cfg: dict[str, Any]) -> Display:
+    d = cfg["display"]
+    if d["backend"] == "emulator":
+        from .adapters.display_emulator import EmulatorDisplay
+
+        return EmulatorDisplay(d["rows"], d["cols"])
+    if d["backend"] == "png":
+        from .adapters.display_png import PngDisplay
+
+        return PngDisplay(d["cols"], d["rows"])
+    from .adapters.display_matrix import MatrixDisplay
+
+    return MatrixDisplay(
+        rows=d["rows"],
+        cols=d["cols"],
+        hardware_mapping=d["hardware_mapping"],
+        gpio_slowdown=d["gpio_slowdown"],
+        rotation=d["rotation"],
+        show_refresh_rate=d.get("show_refresh_rate", False),
+    )
+
+
 def build_app(
     cfg: dict[str, Any],
     root: Path,
@@ -64,16 +86,17 @@ def build_app(
             raise NotImplementedError(f"{section}.backend = {cfg[section]['backend']!r} is not built yet")
 
     d = cfg["display"]
-    if d["backend"] == "emulator":
-        from .adapters.display_emulator import EmulatorDisplay
-
-        display: Display = EmulatorDisplay(d["rows"], d["cols"])
-    elif d["backend"] == "png":
-        from .adapters.display_png import PngDisplay
-
-        display = PngDisplay(d["cols"], d["rows"])
-    else:
-        raise NotImplementedError("display.backend = 'matrix' arrives in phase 4")
+    # Order matters on the Pi: load all assets first, create the matrix last. After the matrix
+    # starts the process may drop root privileges (spec section 11).
+    renderer = Renderer(
+        root / "assets" / "src",
+        d["cols"],
+        d["rows"],
+        hour24=cfg["clock"]["hour24"],
+        sunrise_s=_hhmm(cfg["clock"]["sunrise_fallback"]),
+        sunset_s=_hhmm(cfg["clock"]["sunset_fallback"]),
+    )
+    display = build_display(cfg)
 
     return App(
         clock=clock,
@@ -82,14 +105,7 @@ def build_app(
         motion=SimMotionInput(scenario),
         weather=SimWeather(scenario, clock),
         state=WorldState(),
-        renderer=Renderer(
-            root / "assets" / "src",
-            d["cols"],
-            d["rows"],
-            hour24=cfg["clock"]["hour24"],
-            sunrise_s=_hhmm(cfg["clock"]["sunrise_fallback"]),
-            sunset_s=_hhmm(cfg["clock"]["sunset_fallback"]),
-        ),
+        renderer=renderer,
         scenario=scenario,
         target_fps=float(d["target_fps"]),
     )

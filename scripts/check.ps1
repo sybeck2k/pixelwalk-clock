@@ -41,6 +41,7 @@ if (-not $DemoOnly) {
     Step "ruff"           { & $py -m ruff check src tests }
     Step "asset lint"     { & $py -m pixelwalk.tools.build_assets }
     Step "unit + golden"  { & $py -m pytest -q }
+    Step "night at 10%"   { & $py -m pixelwalk.tools.led_preview --at "2026-07-01 23:00" --out out\led }
     Step "contact sheet"  { & $py -m pixelwalk.tools.contact_sheet --scale 3 --out out\contact.png }
     Write-Host "All checks passed." -ForegroundColor Green
     Write-Host "Art previews: assets\build\preview_*.png"

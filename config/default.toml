@@ -6,6 +6,7 @@ hardware_mapping = "regular"
 gpio_slowdown = 2
 rotation = 270            # 0, 90, 180, 270 (Pi only)
 target_fps = 30
+show_refresh_rate = false  # the library prints this to stdout; leave off in the service
 
 [sensors]
 backend = "sim"           # sim | sysfs

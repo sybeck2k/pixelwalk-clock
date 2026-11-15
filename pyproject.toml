@@ -5,11 +5,10 @@ description = "Side-scrolling platformer clock for a 64x64 RGB LED panel"
 requires-python = ">=3.12"
 dependencies = [
     "Pillow==11.3.0",
-    "RGBMatrixEmulator",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+dev = ["RGBMatrixEmulator", "pytest", "ruff"]  # emulator is PC-only; the Pi never needs it
 
 [build-system]
 requires = ["setuptools>=68"]

@@ -1,0 +1,12 @@
+# First check on the Pi (phase 4): the real panel and real clock, everything else simulated.
+# Sensors, motion and weather still come from scenarios/default.toml until phases 5 and 6.
+[display]
+backend = "matrix"
+[clock]
+backend = "system"
+[sensors]
+backend = "sim"
+[motion]
+backend = "sim"
+[weather]
+backend = "sim"
