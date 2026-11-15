@@ -226,3 +226,46 @@ def test_golden_scenes(request, name, when):
         img.save(path)
     assert path.exists(), "no golden frame; run pytest --update-golden"
     assert img.tobytes() == Image.open(path).convert("RGB").tobytes()
+
+
+# --- the moon's dark side hides the stars behind it --------------------------------------
+
+
+def _star_pixels(renderer):
+    """Positions of every star (the full-brightness layer with all stars shown)."""
+    layer = renderer._stars[8][0]
+    a = layer.getchannel("A")
+    return {(x, y) for y in range(layer.height) for x in range(layer.width) if a.getpixel((x, y))}
+
+
+def test_stars_do_not_show_through_the_unlit_part_of_the_moon():
+    from datetime import timedelta
+
+    from pixelwalk.logic.astro import arc_position, moon_phase_index, moon_progress, seconds_of_day
+
+    r = Renderer(ASSETS, seed=1)
+    stars = _star_pixels(r)
+    disc = r._moon_disc if hasattr(r, "_moon_disc") else r._moon[4].getchannel("A")
+    night = datetime(2026, 7, 12, 21, 0).astimezone()  # a thin waning crescent: mostly dark disc
+    checked = 0
+    for minutes in range(0, 9 * 60, 7):  # through the whole night
+        now = night + timedelta(minutes=minutes)
+        s = seconds_of_day(now)
+        p = moon_progress(s, 7.5 * 3600, 18.5 * 3600)
+        if p is None or moon_phase_index(now) in (4,):
+            continue
+        x0, y0 = arc_position(p)
+        lit = r._moon[moon_phase_index(now)].getchannel("A")
+        img = r.render(WorldSnapshot(), 0.0, now)  # t = 0: no star is hidden by twinkling
+        sky = r.world.layer(Biome.GRASS, Phase.NIGHT).sky
+        for dy in range(disc.height):
+            for dx in range(disc.width):
+                x, y = x0 + dx, y0 + dy
+                if not (0 <= x < 64 and 0 <= y < 30) or not disc.getpixel((dx, dy)):
+                    continue
+                if lit.getpixel((dx, dy)):
+                    continue  # a lit moon pixel
+                if (x, y) in stars:
+                    checked += 1
+                    assert img.getpixel((x, y)) == sky.getpixel((x, y)), (now.time(), x, y)
+    assert checked >= 3, "the test never put a star behind the dark side of the moon"

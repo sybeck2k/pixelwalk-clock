@@ -250,8 +250,11 @@ class World:
             img = self._cache[key] = Image.blend(a, b, q / FADE_STEPS)
         return img
 
-    def draw_sky(self, canvas: Image.Image, biome: Biome, blend: PhaseBlend) -> None:
-        canvas.paste(self._layer("sky", biome, blend), (0, 0))
+    def draw_sky(self, canvas: Image.Image, biome: Biome, blend: PhaseBlend) -> Image.Image:
+        """Paste the sky and return it (the renderer needs it to hide stars behind the moon)."""
+        sky = self._layer("sky", biome, blend)
+        canvas.paste(sky, (0, 0))
+        return sky
 
     def draw_strips(
         self, canvas: Image.Image, world_x: float, biome: Biome, blend: PhaseBlend, far_visibility: float = 1.0

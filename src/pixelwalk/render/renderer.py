@@ -123,6 +123,8 @@ class Renderer:
         moon = self.assets["moon"].frames  # new, waxing crescent, first quarter, waxing gibbous, full
         mirrored = [ImageOps.mirror(f) for f in (moon[3], moon[2], moon[1])]
         self._moon = [*moon, *mirrored]  # indexed by astro.moon_phase_index
+        # The whole disc, lit or not: the dark side of the moon still hides the stars behind it.
+        self._moon_disc = moon[4].getchannel("A")
 
         master = self.assets.palette
         self._pal = {p: phase_palette(master, p) for p in Phase}
@@ -258,8 +260,8 @@ class Renderer:
         self.wind.update(dt, lv.leaves)
 
         img = self._img
-        self.world.draw_sky(img, self.biome, blend)
-        self._celestial(img, t, now, s, sunrise, sunset, lv.clear)
+        sky = self.world.draw_sky(img, self.biome, blend)
+        self._celestial(img, t, now, s, sunrise, sunset, lv.clear, sky)
         self._wash(img, _mix(SKY_WASH[blend.a], SKY_WASH[blend.b], blend.t), (0, 0, self.width, SKY_H), lv.tint)
         for c in self.clouds.clouds:
             cimg = self._cloud_image(c.kind, blend)
@@ -303,7 +305,15 @@ class Renderer:
         return img
 
     def _celestial(
-        self, img: Image.Image, t: float, now: datetime, s: float, sunrise: float, sunset: float, clear: float
+        self,
+        img: Image.Image,
+        t: float,
+        now: datetime,
+        s: float,
+        sunrise: float,
+        sunset: float,
+        clear: float,
+        sky: Image.Image,
     ) -> None:
         level = round(star_level(s, sunrise, sunset) * clear * STAR_LEVELS)
         if level:
@@ -314,7 +324,11 @@ class Renderer:
             self._paste_faded(img, self._sun, arc_position(p, self.width), clear)
         p = moon_progress(s, sunrise, sunset)
         if p is not None:
-            self._paste_faded(img, self._moon[moon_phase_index(now)], arc_position(p, self.width), clear)
+            x, y = arc_position(p, self.width)
+            if level:  # put the bare sky back inside the whole disc: the unlit side hides the stars
+                size = self._moon_disc.size
+                img.paste(sky.crop((x, y, x + size[0], y + size[1])), (x, y), self._moon_disc)
+            self._paste_faded(img, self._moon[moon_phase_index(now)], (x, y), clear)
 
     def _particles(self, img: Image.Image, phase: Phase, slant: bool) -> None:
         pal = self._pal[phase]
