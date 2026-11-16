@@ -262,3 +262,9 @@ also a JSON API (`GET/POST /api/params`, `POST /api/reset`, `GET /api/state`,
 **Security:** there is no login. Anyone who can reach the port can change the display, so it is
 off by default, listens on 127.0.0.1 unless you change it, and logs a warning if you expose it
 without a token.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The pixel art in `assets/` is covered by the same license. The panel is driven
+by [hzeller/rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix) (GPL-2.0), which is
+installed separately and not included here.
