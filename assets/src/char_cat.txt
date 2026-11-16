@@ -1,0 +1,217 @@
+# Character: the cat. An orange tabby facing right, ears on row 0, tail behind.
+# Walk: two spread and two passing poses, the tail sways between them. See render/characters.py.
+
+sprite cat_walk 16x16 ground
+frame spread_a
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBggBBBBggBBk.
+.kBBggBBBBggBBk.
+wkBBBllppllBBBkw
+..kkkkkkkkkkkk..
+....kBBBBBBBBk..
+.kk.kBbBBBBbBk..
+kbbkkBBllllBBk..
+kBBBBBllllllBk..
+.kkkkBBk..kBBk..
+...kllk....kllk.
+...kkkk....kkkk.
+frame pass_a
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBggBBBBggBBk.
+.kBBggBBBBggBBk.
+wkBBBllppllBBBkw
+..kkkkkkkkkkkk..
+.kk.kBBBBBBBBk..
+kbbkkBbBBBBbBk..
+kBBkkBBllllBBk..
+kBBBBBllllllBk..
+.kkkkkBBkBBk....
+.....kllk.kkk...
+.....kkkk.......
+frame spread_b
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBggBBBBggBBk.
+.kBBggBBBBggBBk.
+wkBBBllppllBBBkw
+..kkkkkkkkkkkk..
+....kBBBBBBBBk..
+.kk.kBbBBBBbBk..
+kbbkkBBllllBBk..
+kBBBBBllllllBk..
+.kkkkBBk..kBBk..
+....kllk..kllk..
+....kkkk..kkkk..
+frame pass_b
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBggBBBBggBBk.
+.kBBggBBBBggBBk.
+wkBBBllppllBBBkw
+..kkkkkkkkkkkk..
+.kk.kBBBBBBBBk..
+kbbkkBbBBBBbBk..
+kBBkkBBllllBBk..
+kBBBBBllllllBk..
+.kkkkkBBkBBk....
+.....kkk.kllk...
+.........kkkk...
+
+sprite cat_idle 16x16 ground
+frame stand
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBggBBBBggBBk.
+.kBBggBBBBggBBk.
+wkBBBllppllBBBkw
+..kkkkkkkkkkkk..
+....kBBBBBBBBk..
+.kk.kBbBBBBbBk..
+kbbkkBBllllBBk..
+kBBBBBllllllBk..
+.kkkkkBBkBBk....
+.....kllkkllk...
+.....kkkkkkkk...
+frame blink_flick
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBBBBBBBBBBBk.
+.kBBkkBBBBkkBBk.
+wkBBBllppllBBBkw
+..kkkkkkkkkkkk..
+.kk.kBBBBBBBBk..
+kbbkkBbBBBBbBk..
+kBBkkBBllllBBk..
+kBBBBBllllllBk..
+.kkkkkBBkBBk....
+.....kllkkllk...
+.....kkkkkkkk...
+
+sprite cat_jump 16x16
+frame up
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBggBBBBggBBk.
+.kBBggBBBBggBBk.
+wkBBBllppllBBBkw
+..kkkkkkkkkkkk..
+.kk.kBBBBBBBBk..
+kbbkkBbBBBBbBk..
+kBBkkBBllllBBk..
+kBBBBBllllllBk..
+.kkkkkBBkBBk....
+.....kkkkkkk....
+................
+frame down
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBggBBBBggBBk.
+.kBBggBBBBggBBk.
+wkBBBllppllBBBkw
+..kkkkkkkkkkkk..
+....kBBBBBBBBk..
+.kk.kBbBBBBbBk..
+kbbkkBBllllBBk..
+kBBBBBllllllBk..
+.kkkkBBk..kBBk..
+....kkkk..kkkk..
+................
+
+# Resting: rows 0-2 empty. Awake sits upright by the fire; asleep, the head nods onto its chest, eyes shut.
+sprite cat_sit 16x16 ground
+frame awake
+................
+................
+................
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBggBBBBggBBk.
+.kBBggBBBBggBBk.
+wkBBBllppllBBBkw
+..kkkkkkkkkkkk..
+..kBBBllllBBBk..
+.kBBBBllllBBBBk.
+.kBBllBBBBllBBk.
+..kkkkkkkkkkkk..
+frame asleep
+................
+................
+................
+................
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBBBBBBBBBBBk.
+.kBBkkBBBBkkBBk.
+wkBBBllppllBBBkw
+..kkkkkkkkkkkk..
+.kBBBBllllBBBBk.
+.kBBllBBBBllBBk.
+..kkkkkkkkkkkk..
+
+sprite cat_wake 16x16 ground
+frame stretch
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBggBBBBggBBk.
+.kBBggBBBBggBBk.
+wkBBBllppllBBBkw
+..kkkkkkkkkkkk..
+....kBBBBBBBBk..
+.kk.kBbBBBBbBBBk
+kbbkkBBllllBBkkk
+kBBBBBllllllBk..
+.kkkkkBBkBBk....
+.....kllkkllk...
+.....kkkkkkkk...
+frame yawn
+...kk......kk...
+..kpk......kpk..
+..kBBkkkkkkBBk..
+.kBBBBBBBBBBBBk.
+.kBbBBBBBBBBbBk.
+.kBBBBBBBBBBBBk.
+.kBBkkBBBBkkBBk.
+wkBBBlkkkklBBBkw
+..kkkkkkkkkkkk..
+.kk.kBBBBBBBBk..
+kbbkkBbBBBBbBk..
+kBBkkBBllllBBk..
+kBBBBBllllllBk..
+.kkkkkBBkBBk....
+.....kllkkllk...
+.....kkkkkkkk...
