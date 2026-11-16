@@ -22,7 +22,7 @@ MAX_LAG = 1.8  # digits never lag the real time by more than this (spec: about 2
 
 HOME_X = 24
 GROUND_Y = 40
-RISE = 19  # apex puts the hero's head against the bottom of a block (block ends at y=20)
+RISE = 17  # apex puts the hero's head against the bottom of a block (block ends at y=22)
 TARGET_X = {"hh": 12, "mm": 35}  # hero x that centres it under each block
 
 

@@ -48,7 +48,7 @@ from .particles import Clouds, Lightning, Rain, Snow, Wind
 from .phases import phase_palette, remap_image
 from .world import BIOMES, FADE_STEPS, World
 
-BLOCK_Y = 8
+BLOCK_Y = 10  # clock blocks span y=10..22, leaving the status row (y=1..6) clear above them
 BLOCK_X = {"hh": 11, "mm": 34}
 DIGIT_W, DIGIT_H, DIGIT_GAP = 5, 7, 1
 DIGIT_DX = (19 - (2 * DIGIT_W + DIGIT_GAP)) // 2  # 4
