@@ -490,3 +490,21 @@ def test_resting_and_status_row_stay_distinguishable_at_night_and_low_brightness
     out = {Condition.CLEAR: 9.0, Condition.RAIN: 8.0, Condition.SNOW: -4.0}[cond]
     img = frame(snap(21.0, out, pv, when, cond), when=when)
     assert collapsed_pairs(img, brightness) == [], label
+
+
+def test_format_date_uses_english_month_abbreviations():
+    from datetime import date
+
+    from pixelwalk.render.hud import format_date
+    assert format_date(date(2026, 11, 16)) == "NOV 16"
+    assert format_date(date(2026, 1, 5)) == "JAN 5"
+
+
+def test_date_is_centred_between_the_temperatures_and_can_be_switched_off():
+    box = (17, 0, 47, 8)
+    r = Renderer(ASSETS, seed=1)
+    on = r.render(snap(21.0, 9.0), 0.0, at()).copy()
+    with_date = count_colour(on, DAY["w"], box)
+    r.hud_date = False
+    off = r.render(snap(21.0, 9.0), 0.0, at()).copy()
+    assert with_date - count_colour(off, DAY["w"], box) > 10  # the date itself, not the scene

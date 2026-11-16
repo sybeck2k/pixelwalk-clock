@@ -80,6 +80,7 @@ PARAMS: list[Param] = [
           "No movement this long counts as an empty room."),
     Param("hud.indoor", "bool", "Status row", "Show indoor temperature"),
     Param("hud.outdoor", "bool", "Status row", "Show outdoor temperature"),
+    Param("hud.date", "bool", "Status row", "Show the date (e.g. NOV 16)"),
     Param("hero.cold_c", "float", "Status row", "Cold below (C)", -20, 40, 0.5,
           "Indoor temperature shown in cyan below this."),
     Param("hero.hot_c", "float", "Status row", "Hot above (C)", -20, 50, 0.5,
@@ -261,7 +262,7 @@ def apply_settings(app: Any, values: dict[str, Any]) -> None:
     if set_max is not None:
         set_max(values["display.max_brightness_pct"])
     r = app.renderer
-    r.hud_indoor, r.hud_outdoor = values["hud.indoor"], values["hud.outdoor"]
+    r.hud_indoor, r.hud_outdoor, r.hud_date = values["hud.indoor"], values["hud.outdoor"], values["hud.date"]
     r.cold_c, r.hot_c = values["hero.cold_c"], values["hero.hot_c"]
     r.clockface.hour24 = values["clock.hour24"]
     r.events.enabled, r.events.rate = values["events.enabled"], values["events.rate"]

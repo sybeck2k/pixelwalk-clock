@@ -1,4 +1,4 @@
-"""Status row (spec 7.1): indoor temperature top-left, outdoor top-right, in a 3x5 pixel font.
+"""Status row (spec 7.1): indoor temperature top-left, outdoor top-right and the date in the middle, in a 3x5 pixel font.
 
 Each distinct text is rendered once into a small RGBA image (with a 1 px black shadow so it stays
 readable over any sky) and cached, so the per-frame cost is a single paste.
@@ -7,11 +7,13 @@ readable over any sky) and cached, so the per-frame cost is a single paste.
 from __future__ import annotations
 
 import math
+from datetime import date
 
 from PIL import Image
 
 GLYPH_W, GLYPH_H, GAP = 3, 5, 1
-_NAMES = {"-": "minus", "°": "deg"}
+_NAMES = {"-": "minus", "°": "deg", "O": "0", "S": "5"}
+MONTHS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
 
 
 def format_temp(celsius: float) -> str:
@@ -19,6 +21,11 @@ def format_temp(celsius: float) -> str:
     n = math.floor(celsius + 0.5)
     n = max(-99, min(99, n))
     return f"{n}°"
+
+
+def format_date(day: date) -> str:
+    """Month abbreviation and day, e.g. 'NOV 16' (fixed English names, independent of the locale)."""
+    return f"{MONTHS[day.month - 1]} {day.day}"
 
 
 class Hud:

@@ -1,4 +1,4 @@
-# Status-row digits, 3x5. Ink is 'k'; the renderer uses each glyph as a mask.
+# Status-row digits and the letters of the month names, 3x5 (O and S reuse the 0 and 5 glyphs). Ink is 'k'; the renderer uses each glyph as a mask.
 # At 3x5 several standard digit pairs differ by a single pixel (3/9, 5/6, 8/9, 0/8 ...), so this
 # font declares min_diff=1 instead of the usual 3 px between glyphs.
 sprite font3x5 3x5 glyphs min_diff=1
@@ -74,3 +74,99 @@ k.k
 kkk
 ...
 ...
+frame A
+.k.
+k.k
+kkk
+k.k
+k.k
+frame B
+kk.
+k.k
+kk.
+k.k
+kk.
+frame C
+kkk
+k..
+k..
+k..
+kkk
+frame D
+kk.
+k.k
+k.k
+k.k
+kk.
+frame E
+kkk
+k..
+kk.
+k..
+kkk
+frame F
+kkk
+k..
+kk.
+k..
+k..
+frame G
+kkk
+k..
+k.k
+k.k
+kkk
+frame J
+..k
+..k
+..k
+k.k
+kkk
+frame L
+k..
+k..
+k..
+k..
+kkk
+frame M
+k.k
+kkk
+kkk
+k.k
+k.k
+frame N
+kk.
+k.k
+k.k
+k.k
+k.k
+frame P
+kkk
+k.k
+kkk
+k..
+k..
+frame R
+kk.
+k.k
+kk.
+k.k
+k.k
+frame U
+k.k
+k.k
+k.k
+k.k
+kkk
+frame V
+k.k
+k.k
+k.k
+k.k
+.k.
+frame Y
+k.k
+k.k
+.k.
+.k.
+.k.

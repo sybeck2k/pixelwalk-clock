@@ -96,6 +96,7 @@ style = "pumpkins"
 [hud]
 indoor = true             # indoor temperature, top-left
 outdoor = true            # outdoor temperature, top-right
+date = true               # month and day, top-centre (e.g. NOV 16)
 
 [hero]
 cold_c = 18               # indoor temperatures below / above these are shown in cyan / orange

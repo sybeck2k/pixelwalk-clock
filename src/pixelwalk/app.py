@@ -124,6 +124,7 @@ def build_app(
         min_stay_s=cfg["director"]["min_stay_s"],
         hud_indoor=cfg["hud"]["indoor"],
         hud_outdoor=cfg["hud"]["outdoor"],
+        hud_date=cfg["hud"]["date"],
         cold_c=cfg["hero"]["cold_c"],
         hot_c=cfg["hero"]["hot_c"],
         events=cfg.get("events"),

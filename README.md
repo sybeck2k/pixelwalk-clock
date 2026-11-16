@@ -95,7 +95,7 @@ stretches and the brightness ramps back over a second. Optional quiet hours
 (`presence.quiet_*`) switch the panel off sooner when the room is empty and cap the brightness
 when it is not. With no motion sensor the room counts as always occupied. The top row shows the
 indoor temperature (top-left; cyan below `hero.cold_c`, orange above `hero.hot_c`) and the outdoor
-temperature (top-right); each can be switched off under `[hud]`.
+temperature (top-right), with the date (`NOV 16`) between them; each can be switched off under `[hud]`.
 
 Real sensors are read from the kernel drivers' sysfs files (`sensors.backend = "sysfs"`; any
 unreadable file just means "no reading") and the PIR from a GPIO line with libgpiod

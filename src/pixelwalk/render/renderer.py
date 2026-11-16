@@ -43,7 +43,7 @@ from ..logic.transition import Transition
 from ..state import WorldSnapshot
 from .assets import Assets, load_assets
 from .events import Sparkles, bird_position, draw_lights, draw_props, draw_shooting_star
-from .hud import Hud, format_temp
+from .hud import Hud, format_date, format_temp
 from .particles import Clouds, Lightning, Rain, Snow, Wind
 from .phases import phase_palette, remap_image
 from .world import BIOMES, FADE_STEPS, World
@@ -121,6 +121,7 @@ class Renderer:
         min_stay_s: float = 600.0,
         hud_indoor: bool = True,
         hud_outdoor: bool = True,
+        hud_date: bool = True,
         cold_c: float = 18.0,
         hot_c: float = 26.0,
         events: dict | None = None,
@@ -138,6 +139,7 @@ class Renderer:
         self.effects = EffectState()
         # Settings the control page can change while the app runs.
         self.hud_indoor, self.hud_outdoor, self.cold_c, self.hot_c = hud_indoor, hud_outdoor, cold_c, hot_c
+        self.hud_date = hud_date
         self._camp_x: float | None = None
         ev = events or {}
         self.events = EventScheduler(random.Random(seed + 7), ev.get("enabled", True), ev.get("rate", 1.0))
@@ -362,7 +364,7 @@ class Renderer:
         self._block_with_digits(img, "mm", view.mm, view.mm_dy)
         self.sparkles.update(dt)
         self.sparkles.draw(self._draw, self._pal[hero_phase])
-        self._status_row(img, snap, hero_phase)
+        self._status_row(img, snap, hero_phase, now)
         if "lights" in self._styles:
             draw_lights(self._draw, t, self.width, self.assets.palette)  # untinted: bulbs glow at night
         if tv is not None and tv.wipe is not None:
@@ -430,8 +432,11 @@ class Renderer:
             z = sprites["sleep_z"][int(t * 1.5) % 2]
             img.paste(z, (draw.x + 8, draw.y - 5), z)
 
-    def _status_row(self, img: Image.Image, snap: WorldSnapshot, phase: Phase) -> None:
+    def _status_row(self, img: Image.Image, snap: WorldSnapshot, phase: Phase, now: datetime) -> None:
         pal = self._pal[phase]
+        if self.hud_date:
+            text = self.hud.image(format_date(now.date()), pal["w"])
+            img.paste(text, ((self.width - text.width) // 2, HUD_Y), text)
         if self.hud_indoor and snap.sensors is not None and snap.sensors.temperature_c is not None:
             c = snap.sensors.temperature_c
             colour = pal["c"] if c < self.cold_c else pal["B"] if c > self.hot_c else pal["w"]

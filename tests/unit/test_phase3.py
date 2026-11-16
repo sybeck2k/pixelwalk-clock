@@ -176,8 +176,13 @@ def test_sky_corner_fades_monotonically_from_day_to_dusk():
 
 
 def test_stars_only_at_night_and_sun_only_by_day():
-    day = frame(at(12, 0))
-    night = frame(at(1, 0))
+    def bare(when):  # no date text, so the top band holds only sky and stars
+        r = Renderer(ASSETS, seed=1)
+        r.hud_date = False
+        return r.render(WorldSnapshot(), 0.0, when).copy()
+
+    day = bare(at(12, 0))
+    night = bare(at(1, 0))
     assert ImageChops.difference(day, night).getbbox() is not None
     star_band = (0, 0, 64, 7)  # above the clock blocks: only sky and stars
     sky_day = day.crop(star_band)
