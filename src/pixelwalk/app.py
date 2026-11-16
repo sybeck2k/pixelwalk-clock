@@ -128,6 +128,8 @@ def build_app(
         cold_c=cfg["hero"]["cold_c"],
         hot_c=cfg["hero"]["hot_c"],
         events=cfg.get("events"),
+        character=cfg["hero"]["character"],
+        biome=cfg["world"]["biome"],
     )
     # The application works in 0..100 relative brightness; the ceiling maps that onto the panel.
     display = ScaledDisplay(build_display(cfg, ctx), d["max_brightness_pct"])
@@ -149,7 +151,11 @@ def build_app(
     )
     ctl = cfg["control"]
     # Settings changed while running are remembered in a small file and applied from the start.
-    app.settings = RuntimeSettings(cfg, root / ctl["settings_path"] if ctl.get("settings_path") else None)
+    app.settings = RuntimeSettings(
+        cfg,
+        root / ctl["settings_path"] if ctl.get("settings_path") else None,
+        choices={"hero.character": renderer.characters(), "world.biome": ["auto", *renderer.biomes()]},
+    )
     apply_settings(app, app.settings.values())
     app.applied_version = app.settings.version
     if ctl.get("enabled"):

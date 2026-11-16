@@ -44,12 +44,16 @@ class BiomeSelector:
     def __init__(self, min_stay_s: float = MIN_STAY_S) -> None:
         self.min_stay_s = min_stay_s
         self.current: Biome | None = None
+        self.forced: Biome | None = None  # a pinned biome ignores the weather and the minimum stay
         self._since = 0.0
 
     def initialize(self, t: float, weather: Weather | None) -> Biome:
         """First biome at start-up: picked directly, no transition, no minimum stay."""
         self.current = Biome.GRASS
-        if weather is not None:
+        if self.forced is not None:
+            self.current = self.forced
+            self._since = t
+        elif weather is not None:
             self.current = choose_biome(Biome.GRASS, weather.temperature_c, weather.condition)
             self._since = t
         else:
@@ -59,6 +63,8 @@ class BiomeSelector:
 
     def target(self, t: float, weather: Weather | None) -> Biome:
         assert self.current is not None, "call initialize() first"
+        if self.forced is not None:
+            return self.forced
         if weather is None:  # unknown weather: stay where we are
             return self.current
         wanted = choose_biome(self.current, weather.temperature_c, weather.condition)

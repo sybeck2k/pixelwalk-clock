@@ -15,6 +15,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 from ..render.assets import AssetError, Assets, Sprite, load_assets
+from ..render.characters import DEFAULT_CHARACTER, discover, problems
 
 
 def _opaque(img: Image.Image) -> set[tuple[int, int]]:
@@ -68,6 +69,11 @@ def lint(assets: Assets) -> tuple[list[str], list[str]]:
                     errors.append(
                         f"{s.name}: glyphs {s.labels[i]} and {s.labels[j]} differ by only {d} px (need {need})"
                     )
+    names = discover(assets)
+    if DEFAULT_CHARACTER not in names:
+        errors.append(f"the default character {DEFAULT_CHARACTER!r} has no sprites")
+    for name in names:  # a character is a complete set of poses (render/characters.py)
+        errors += [f"character {name}: {msg}" for msg in problems(assets, name)]
     return errors, warnings
 
 

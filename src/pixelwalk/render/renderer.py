@@ -42,6 +42,7 @@ from ..logic.presence import PresenceState
 from ..logic.transition import Transition
 from ..state import WorldSnapshot
 from .assets import Assets, load_assets
+from .characters import DEFAULT_CHARACTER, POSES, available, problems, sprite_name
 from .events import Sparkles, bird_position, draw_lights, draw_props, draw_shooting_star
 from .hud import Hud, format_date, format_temp
 from .particles import Clouds, Lightning, Rain, Snow, Wind
@@ -125,6 +126,8 @@ class Renderer:
         cold_c: float = 18.0,
         hot_c: float = 26.0,
         events: dict | None = None,
+        character: str = DEFAULT_CHARACTER,
+        biome: str = "auto",
     ) -> None:
         self.width, self.height = width, height
         self.assets = assets or load_assets(assets_dir)
@@ -163,14 +166,11 @@ class Renderer:
         master = self.assets.palette
         self._pal = {p: phase_palette(master, p) for p in Phase}
         actor = {p: phase_palette(master, p, actor=True) for p in Phase}
-        names = (
-            "hero_walk", "hero_idle", "hero_jump", "umbrella", "scarf",
-            "hero_sit", "hero_wake", "sleep_z", "campfire",
-            "sweat", "bird", "coin", "pumpkin", "cake",
-        )
-        self._hero = {  # pre-tinted per phase, so no colour maths per frame
-            p: {n: [remap_image(f, master, actor[p]) for f in self.assets[n].frames] for n in names} for p in Phase
-        }
+        self._actor = actor
+        self._hero_cache: dict[str, dict] = {}  # character -> phase -> sprite name -> tinted frames
+        self.character = ""
+        self.set_character(character)
+        self.set_biome(biome)
         self._pipes = {
             p: {b: remap_image(self.assets[d.pipe].frames[0], master, self._pal[p]) for b, d in BIOMES.items()}
             for p in Phase
@@ -199,6 +199,50 @@ class Renderer:
         # Glyph masks: ink pixels are opaque, so the alpha channel is the paste mask.
         self._glyph = {lab: f.getchannel("A") for lab, f in zip(font.labels, font.frames, strict=True)}
         self._last_t: float | None = None
+
+    # --- swappable parts --------------------------------------------------------------------
+
+    def characters(self) -> list[str]:
+        """The complete characters in the assets (see render/characters.py), the robot first."""
+        return available(self.assets)
+
+    def set_character(self, name: str) -> None:
+        """Swap the hero. Tints the new character's sprites once (cached), so later swaps are free."""
+        if name == self.character:
+            return
+        if name not in self._hero_cache:
+            bad = problems(self.assets, name)
+            if bad:
+                raise ValueError(
+                    f"character {name!r} is not usable ({'; '.join(bad)}); available: {', '.join(self.characters())}"
+                )
+            master = self.assets.palette
+            shared = (
+                "umbrella", "scarf", "sleep_z", "campfire", "sweat", "bird", "coin", "pumpkin", "cake",
+            )
+            per_phase = {}
+            for p in Phase:
+                tint = {pose: sprite_name(name, pose) for pose in POSES} | {n: n for n in shared}
+                per_phase[p] = {
+                    key: [remap_image(f, master, self._actor[p]) for f in self.assets[src].frames]
+                    for key, src in tint.items()
+                }
+            self._hero_cache[name] = per_phase
+        self._sprites = self._hero_cache[name]
+        self.character = name
+
+    def biomes(self) -> list[str]:
+        return [b.value for b in Biome]
+
+    def set_biome(self, choice: str) -> None:
+        """"auto" follows the weather; a biome name pins that biome (the pipe trip still plays)."""
+        if choice == "auto":
+            self.selector.forced = None
+            return
+        try:
+            self.selector.forced = Biome(choice)
+        except ValueError:
+            raise ValueError(f"unknown biome {choice!r}; use auto or one of {', '.join(self.biomes())}") from None
 
     # --- helpers --------------------------------------------------------------------------
 
@@ -328,7 +372,7 @@ class Renderer:
         far_visibility = 1.0 - min(1.0, lv.fog / 0.6)
         self.world.draw_strips(img, self.hero.world_x, self.biome, blend, far_visibility)
 
-        sprites = self._hero[hero_phase]
+        sprites = self._sprites[hero_phase]
         self._event_scenery(img, sprites, ev, t, dt, draw)
         sprite = sprites[draw.sprite][draw.frame]
         img.paste(sprite, (draw.x, draw.y), sprite)

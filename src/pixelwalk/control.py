@@ -321,6 +321,9 @@ function input(p, value, send) {
   let el;
   if (p.kind === 'bool') { el = document.createElement('input'); el.type = 'checkbox'; el.checked = !!value;
     el.onchange = () => send(el.checked); }
+  else if (p.kind === 'choice') { el = document.createElement('select');
+    (p.options || [value]).forEach(o => { const op = document.createElement('option'); op.value = op.textContent = o; el.append(op); });
+    el.value = value; el.onchange = () => send(el.value); }
   else if (p.kind === 'str') { el = document.createElement('input'); el.type = 'text'; el.value = value;
     el.onchange = () => send(el.value); }
   else { el = document.createElement('input'); el.type = 'number'; el.value = value;

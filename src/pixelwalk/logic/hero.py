@@ -16,7 +16,7 @@ IDLE_FPS = 1.5
 class HeroDraw:
     x: int
     y: int
-    sprite: str  # "hero_walk" | "hero_idle" | "hero_jump"
+    sprite: str  # the pose: "walk" | "idle" | "jump" | "sit" | "wake" (the character picks the art)
     frame: int
 
 
@@ -50,15 +50,15 @@ class Hero:
             self._until = mono + self._rng.uniform(20, 60)
         if override is not None:
             if override.pose == "stand":
-                return HeroDraw(override.x, override.y, "hero_idle", 0)
+                return HeroDraw(override.x, override.y, "idle", 0)
             if override.pose in ("sit", "sleep"):  # resting by the campfire
-                return HeroDraw(override.x, override.y, "hero_sit", 0 if override.pose == "sit" else 1)
+                return HeroDraw(override.x, override.y, "sit", 0 if override.pose == "sit" else 1)
             if override.pose == "wake":  # the stretch when motion returns
-                return HeroDraw(override.x, override.y, "hero_wake", int(mono * 3) % 2)
+                return HeroDraw(override.x, override.y, "wake", int(mono * 3) % 2)
             if override.pose == "walk":
-                return HeroDraw(override.x, override.y, "hero_walk", int(mono * WALK_FPS) % 4)
-            return HeroDraw(override.x, override.y, "hero_jump", 0 if override.pose == "jump_up" else 1)
+                return HeroDraw(override.x, override.y, "walk", int(mono * WALK_FPS) % 4)
+            return HeroDraw(override.x, override.y, "jump", 0 if override.pose == "jump_up" else 1)
         if self._walking:
             self.world_x += dt * WALK_SPEED_PX_S
-            return HeroDraw(HOME_X, GROUND_Y, "hero_walk", int(mono * WALK_FPS) % 4)
-        return HeroDraw(HOME_X, GROUND_Y, "hero_idle", int(mono * IDLE_FPS) % 2)
+            return HeroDraw(HOME_X, GROUND_Y, "walk", int(mono * WALK_FPS) % 4)
+        return HeroDraw(HOME_X, GROUND_Y, "idle", int(mono * IDLE_FPS) % 2)

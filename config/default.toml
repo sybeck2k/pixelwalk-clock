@@ -99,8 +99,12 @@ outdoor = true            # outdoor temperature, top-right
 date = true               # month and day, top-centre (e.g. NOV 16)
 
 [hero]
+character = "robot"       # who walks through the world: any complete character in assets/src (e.g. char_robot.txt)
 cold_c = 18               # indoor temperatures below / above these are shown in cyan / orange
 hot_c = 26
+
+[world]
+biome = "auto"            # "auto" follows the weather, or pin one: grass, snow, desert
 
 [control]
 # Optional web page and API to change settings on the running app. OFF by default.

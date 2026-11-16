@@ -31,7 +31,7 @@ log = logging.getLogger("pixelwalk.settings")
 @dataclass(frozen=True)
 class Param:
     key: str  # "section.name", the same as in the config file
-    kind: str  # "float" | "int" | "bool" | "str"
+    kind: str  # "float" | "int" | "bool" | "str" | "choice" (one of a list the app supplies)
     group: str
     label: str
     lo: float | None = None
@@ -90,6 +90,10 @@ PARAMS: list[Param] = [
     Param("events.rate", "float", "Extras", "Random event frequency (x)", 0, 10, 0.1,
           "1 is about a few an hour; 0 turns random events off but keeps the dated looks."),
     Param("clock.hour24", "bool", "Clock", "24-hour clock"),
+    Param("hero.character", "choice", "Look", "Character",
+          hint="Who walks through the world. Any complete character in assets/src is listed."),
+    Param("world.biome", "choice", "Look", "Scenery",
+          hint="Auto follows the weather; pick one to pin it (the robot takes a pipe to get there)."),
     Param("director.min_stay_s", "float", "World", "Minimum stay in a biome (s)", 0, 86400, 10,
           "Stops the scenery from flapping between biomes."),
 ]
@@ -101,8 +105,14 @@ def _dig(cfg: dict[str, Any], key: str) -> Any:
     return cfg[section][name]
 
 
-def _check_value(p: Param, v: Any) -> tuple[Any, str | None]:
+def _check_value(p: Param, v: Any, options: list[str] | None = None) -> tuple[Any, str | None]:
     """The coerced value, or an error message."""
+    if p.kind == "choice":
+        if not isinstance(v, str):
+            return v, f"{p.key} must be text"
+        if options is not None and v not in options:
+            return v, f"{p.key} must be one of: {', '.join(options)}"
+        return v, None
     if p.kind == "bool":
         if not isinstance(v, bool):
             return v, f"{p.key} must be true or false"
@@ -137,8 +147,11 @@ def cross_check(values: dict[str, Any]) -> str | None:
 
 
 class RuntimeSettings:
-    def __init__(self, cfg: dict[str, Any], path: Path | None = None) -> None:
+    def __init__(
+        self, cfg: dict[str, Any], path: Path | None = None, choices: dict[str, list[str]] | None = None
+    ) -> None:
         self._lock = threading.Lock()
+        self.choices = choices or {}  # key -> allowed values, for "choice" params
         self.path = path
         self.defaults: dict[str, Any] = {p.key: _dig(cfg, p.key) for p in PARAMS}
         self._values = dict(self.defaults)
@@ -160,7 +173,8 @@ class RuntimeSettings:
         vals = self.values()
         return [
             {"key": p.key, "kind": p.kind, "group": p.group, "label": p.label, "value": vals[p.key],
-             "default": self.defaults[p.key], "min": p.lo, "max": p.hi, "step": p.step, "hint": p.hint}
+             "default": self.defaults[p.key], "min": p.lo, "max": p.hi, "step": p.step, "hint": p.hint,
+             "options": self.choices.get(p.key)}
             for p in PARAMS
         ]
 
@@ -174,7 +188,7 @@ class RuntimeSettings:
             if p is None:
                 errors.append(f"unknown setting {key!r}")
                 continue
-            v, err = _check_value(p, raw)
+            v, err = _check_value(p, raw, self.choices.get(key))
             if err:
                 errors.append(err)
             else:
@@ -226,7 +240,7 @@ class RuntimeSettings:
             if p is None:
                 log.warning("ignoring unknown saved setting %r", key)
                 continue
-            v, err = _check_value(p, raw)
+            v, err = _check_value(p, raw, self.choices.get(key))
             if err:
                 log.warning("ignoring saved setting: %s", err)
             else:
@@ -267,3 +281,8 @@ def apply_settings(app: Any, values: dict[str, Any]) -> None:
     r.clockface.hour24 = values["clock.hour24"]
     r.events.enabled, r.events.rate = values["events.enabled"], values["events.rate"]
     r.selector.min_stay_s = values["director.min_stay_s"]
+    for apply, key in ((r.set_character, "hero.character"), (r.set_biome, "world.biome")):
+        try:
+            apply(values[key])
+        except ValueError as e:  # a stale name (the sprite file was removed): keep what is showing
+            log.warning("%s: %s", key, e)

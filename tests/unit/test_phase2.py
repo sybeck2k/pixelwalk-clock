@@ -165,7 +165,7 @@ def test_hero_walk_pause_cycle_is_seeded_and_time_based():
     a, wa = trace(30)
     _, wb = trace(10)
     assert abs(wa - wb) < 3  # same distance regardless of frame rate
-    assert 5 <= a["hero_idle"] <= 70 and a["hero_walk"] > 20
+    assert 5 <= a["idle"] <= 70 and a["walk"] > 20
 
 
 # --- renderer: golden frames, performance ----------------------------------------------

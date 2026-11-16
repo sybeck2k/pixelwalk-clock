@@ -102,6 +102,21 @@ unreadable file just means "no reading") and the PIR from a GPIO line with libgp
 (`motion.backend = "gpio"`, both the 1.x and 2.x Python APIs work). The demo (`--demo`) shows
 the whole sleep-and-wake sequence with shortened timings.
 
+## Swapping the character and the scenery
+
+Both are choices, not code. In `config/local.toml`:
+
+    [hero]
+    character = "robot"     # robot or cat, or any complete character in assets/src (char_<name>.txt)
+
+    [world]
+    biome = "auto"          # "auto" follows the weather; or pin grass, snow or desert
+
+With `control.enabled = true` the same two choices are in the control page's "Look" group and apply
+live (a pinned biome plays the pipe trip). A character is five sprites named `<name>_walk`, `_idle`,
+`_jump`, `_sit` and `_wake`; `python -m pixelwalk.tools.build_assets` says what a new one is missing.
+The `new-character-or-theme` skill (`.claude/skills`) walks through drawing one.
+
 ## Moods, events and date specials
 
 The robot reacts to the weather and the room: an umbrella in rain, a scarf in snow or when the
