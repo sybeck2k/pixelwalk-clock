@@ -64,7 +64,8 @@ class FakeMatrix:
 
 
 class FakeOptions:
-    pass
+    pwm_bits = 11  # a field the library has: settable through display.matrix
+    led_rgb_sequence = "RGB"
 
 
 @pytest.fixture
@@ -277,3 +278,49 @@ def test_benchmark_budget_uses_work_not_the_vsync_wait():
     assert "vsync wait" in report(result)
     assert "work (compose + push)" in report(result)
     assert "PASS" in report(result)  # 7.5 ms < 10 ms, and no frame later than its 33 ms period
+
+
+def test_extra_options_are_passed_through_and_unknown_ones_rejected(fake_rgbmatrix):
+    from pixelwalk.adapters.display_matrix import MatrixDisplay
+
+    MatrixDisplay(options={"pwm_bits": 9, "led_rgb_sequence": "RBG"})
+    o = fake_rgbmatrix.last_options
+    assert (o.pwm_bits, o.led_rgb_sequence) == (9, "RBG")
+    with pytest.raises(ValueError, match="display.matrix.nope"):
+        MatrixDisplay(options={"nope": 1})
+    with pytest.raises(ValueError, match="display.matrix.rows"):  # owned by the named settings
+        MatrixDisplay(options={"rows": 32})
+
+
+def test_brightness_falls_back_to_the_matrix_on_an_older_library(fake_rgbmatrix, monkeypatch):
+    from pixelwalk.adapters.display_matrix import MatrixDisplay
+
+    d = MatrixDisplay()
+    class OldCanvas:  # no `brightness` attribute and no way to add one
+        __slots__ = ()
+
+        def SetImage(self, img):
+            pass
+
+    d._canvas = OldCanvas()
+    d._matrix.brightness = 100
+    d.set_brightness(30)
+    d.show(frame())
+    assert d._matrix.brightness == 30
+
+
+def test_missing_bindings_give_a_helpful_error(monkeypatch):
+    from pixelwalk.adapters.display_matrix import MatrixDisplay
+
+    monkeypatch.setitem(sys.modules, "rgbmatrix", None)  # makes the import fail
+    with pytest.raises(RuntimeError, match="rgbmatrix Python bindings"):
+        MatrixDisplay()
+
+
+def test_only_a_64x64_panel_is_accepted():
+    from pixelwalk.config import ConfigError, validate
+
+    base = {"display": {"rows": 64, "cols": 64}}
+    validate(base)
+    with pytest.raises(ConfigError, match="64x64"):
+        validate({"display": {"rows": 32, "cols": 64}})

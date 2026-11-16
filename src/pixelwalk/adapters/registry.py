@@ -156,5 +156,6 @@ def build_display(ctx: BuildContext) -> Display:
         gpio_slowdown=d["gpio_slowdown"],
         rotation=d["rotation"],
         show_refresh_rate=d.get("show_refresh_rate", False),
+        options=d.get("matrix"),
     )
 

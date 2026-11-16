@@ -4,10 +4,15 @@ rows = 64
 cols = 64
 hardware_mapping = "regular"
 gpio_slowdown = 2
-rotation = 270            # 0, 90, 180, 270 (Pi only)
+rotation = 270            # 0, 90, 180, 270 (matrix only)
 target_fps = 30
 max_brightness_pct = 100   # the panel's ceiling: the app works in 0..100 relative to this value
 show_refresh_rate = false  # the library prints this to stdout; leave off in the service
+# Only a 64x64 panel is supported (rows and cols are here for the library, not for resizing).
+# Any other rgbmatrix option goes in [display.matrix] (see the README), for example:
+#   [display.matrix]
+#   pwm_bits = 9
+#   led_rgb_sequence = "RBG"
 
 [sensors]
 backend = "sim"           # sim | sysfs | none | "pkg.module:factory" (your own)

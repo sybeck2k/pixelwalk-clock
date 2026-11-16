@@ -8,10 +8,14 @@ are loaded: once the matrix starts, the process may drop root and lose access to
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from PIL import Image
 
 VALID_ROTATIONS = (0, 90, 180, 270)
+# Set from the named arguments, not from `options`: the app is built around one 64x64 panel.
+RESERVED_OPTIONS = ("rows", "cols", "chain_length", "parallel", "hardware_mapping", "gpio_slowdown",
+                    "pixel_mapper_config", "show_refresh_rate")
 
 
 class MatrixDisplay:
@@ -23,10 +27,18 @@ class MatrixDisplay:
         gpio_slowdown: int = 2,
         rotation: int = 270,
         show_refresh_rate: bool = False,
+        options: dict[str, Any] | None = None,
     ) -> None:
         if rotation not in VALID_ROTATIONS:
             raise ValueError(f"rotation must be one of {VALID_ROTATIONS}, got {rotation!r}")
-        from rgbmatrix import RGBMatrix, RGBMatrixOptions
+        try:
+            from rgbmatrix import RGBMatrix, RGBMatrixOptions
+        except ImportError as e:
+            raise RuntimeError(
+                "display.backend = 'matrix' needs the rgbmatrix Python bindings from "
+                "https://github.com/hzeller/rpi-rgb-led-matrix (bindings/python). "
+                "On a PC use display.backend = 'emulator' instead."
+            ) from e
 
         opts = RGBMatrixOptions()
         opts.rows = rows
@@ -39,6 +51,13 @@ class MatrixDisplay:
         opts.pixel_mapper_config = f"Rotate:{rotation}" if rotation else ""
         # The library prints its refresh counter to stdout; our own output stays on stderr.
         opts.show_refresh_rate = bool(show_refresh_rate)
+        # Any other RGBMatrixOptions field (pwm_bits, led_rgb_sequence, multiplexing, panel_type,
+        # row_address_type, limit_refresh_rate_hz, disable_hardware_pulsing ...), by name. Looking the
+        # name up on the options object keeps this working across library versions.
+        for name, value in (options or {}).items():
+            if name in RESERVED_OPTIONS or not hasattr(opts, name):
+                raise ValueError(f"display.matrix.{name}: not a setting of this rgbmatrix library")
+            setattr(opts, name, value)
         self.width, self.height = cols, rows
         self._matrix = RGBMatrix(options=opts)
         self._canvas = self._matrix.CreateFrameCanvas()
@@ -56,12 +75,18 @@ class MatrixDisplay:
             self._canvas.Clear()
         else:
             # Brightness only affects pixels set afterwards, so set it before SetImage.
-            self._canvas.brightness = self._brightness
+            self._set_canvas_brightness(self._brightness)
             self._canvas.SetImage(frame)
         t1 = time.perf_counter()
         self._canvas = self._matrix.SwapOnVSync(self._canvas)
         self.last_push_s = t1 - t0
         self.last_swap_s = time.perf_counter() - t1
+
+    def _set_canvas_brightness(self, percent: int) -> None:
+        try:
+            self._canvas.brightness = percent
+        except AttributeError:  # an older library: brightness is a property of the matrix only
+            self._matrix.brightness = percent
 
     def set_brightness(self, percent: int) -> None:
         self._brightness = max(0, min(100, int(percent)))

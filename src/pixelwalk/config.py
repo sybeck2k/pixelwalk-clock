@@ -59,6 +59,12 @@ def validate(cfg: dict[str, Any]) -> None:
                     f"weather.{key} is required for the openmeteo backend and must be a number "
                     f"between {lo} and {hi} (set it in config/local.toml)"
                 )
+    d = cfg.get("display", {})
+    for key in ("rows", "cols"):
+        if d.get(key, 64) != 64:  # the art, the clock layout and the pipe transition are drawn for 64x64
+            raise ConfigError(f"display.{key} = {d[key]!r}: only a 64x64 panel is supported")
+    if not isinstance(d.get("matrix", {}), dict):
+        raise ConfigError("display.matrix must be a table of rgbmatrix options")
     mx = cfg.get("display", {}).get("max_brightness_pct", 100)
     if not isinstance(mx, (int, float)) or isinstance(mx, bool) or not 1 <= mx <= 100:
         raise ConfigError(f"display.max_brightness_pct = {mx!r} must be a number between 1 and 100")
