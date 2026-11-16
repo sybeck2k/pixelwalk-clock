@@ -2,6 +2,8 @@
 name = "pixelwalk"
 version = "0.1.0"
 description = "Side-scrolling platformer clock for a 64x64 RGB LED panel"
+readme = "README.md"
+keywords = ["led-matrix", "raspberry-pi", "hub75", "pixel-art", "clock"]
 requires-python = ">=3.12"
 dependencies = [
     "Pillow==11.3.0",

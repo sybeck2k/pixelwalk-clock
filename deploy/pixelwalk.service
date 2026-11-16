@@ -3,7 +3,8 @@ Description=Pixelwalk LED display
 After=multi-user.target
 
 [Service]
-ExecStart=/home/ubuntu/led-venv/bin/python -m pixelwalk --profile pi --config /etc/pixelwalk/config.toml
+# Edit the two paths below to match your install
+ExecStart=/opt/pixelwalk/venv/bin/python -m pixelwalk --profile pi --config /etc/pixelwalk/config.toml
 Environment=PYTHONPATH=/opt/pixelwalk/src
 WorkingDirectory=/opt/pixelwalk
 User=root

@@ -1,7 +1,55 @@
 # Pixelwalk
 
-Side-scrolling platformer clock for a 64x64 RGB LED panel on a Raspberry Pi 3B.
-Full design: [pixelwalk-spec.md](pixelwalk-spec.md).
+Side-scrolling platformer clock for a 64x64 RGB LED panel on a Raspberry Pi. A pixel-art hero walks
+through a world that follows the time of day, the weather and (optionally) the room. It runs on
+your PC first, in a browser, so you can try everything without a panel.
+Design notes: [docs/spec.md](docs/spec.md) (historical; this README is the current reference).
+
+![Times of day and moon phases](docs/img/times-of-day.png)
+
+![Weather conditions and the three biomes](docs/img/weather.png)
+
+*Rendered by `pixelwalk.tools.contact_sheet` (`--weather` for the second sheet).*
+
+## What you need
+
+**Required**
+
+- A **64x64 HUB75 RGB LED panel** (other sizes are not supported: the art and layout are drawn for 64x64)
+  and a Raspberry Pi wired to it for [hzeller/rpi-rgb-led-matrix](https://github.com/hzeller/rpi-rgb-led-matrix),
+  with its **Python bindings** (`rgbmatrix`) built against the same Pillow as this app. Pi 5 is not
+  supported by that library. Developed and measured on a Pi 3B.
+- Python 3.12+ and **Pillow 11.3.0**, pinned exactly in `pyproject.toml`. The `rgbmatrix` bindings are
+  compiled against Pillow's internal headers, so they must be built for the same Pillow version this app
+  runs on. A different version may work, but only 11.3.0 is tested (the golden-image tests assume it);
+  if you change it, rebuild the bindings and edit the pin.
+
+**Optional** (each one switched off with `backend = "none"`; the app then does without)
+
+- a **light sensor** (brightness follows the room; without it brightness is fixed),
+- an **indoor temperature / pressure sensor** (top-left temperature, barometer-driven clouds),
+- a **PIR motion sensor** (the hero sleeps and the panel goes dark when nobody is around),
+- **weather** from Open-Meteo (needs your coordinates and a network).
+
+## Panel and library settings
+
+`config/default.toml` `[display]` maps onto the library's options: `hardware_mapping` (`regular`,
+`adafruit-hat`, `adafruit-hat-pwm`, ...), `gpio_slowdown` (raise it on a faster Pi, or if the picture
+flickers), `rotation`, `max_brightness_pct`. Anything else the library supports goes under
+`[display.matrix]` by its option name and is checked against the installed bindings:
+
+    [display]
+    hardware_mapping = "adafruit-hat"
+    [display.matrix]
+    pwm_bits = 9
+    led_rgb_sequence = "RBG"      # panels whose colours come out swapped
+    limit_refresh_rate_hz = 120
+
+Notes: the library needs root to reach the GPIO and then drops privileges, so `state/` and any cache
+must be writable by the `daemon` user (see `deploy/README.md`). A 64x64 panel needs the E address
+line connected (on the Adafruit bonnet, solder the jumper). A single panel only: `chain_length`
+and `parallel` are fixed at 1. Disabling the Pi's on-board audio and `isolcpus=3` help the refresh rate.
+`display.backend = "emulator"` (a browser view via RGBMatrixEmulator) and `"png"` need no hardware.
 
 ## Dev setup
 

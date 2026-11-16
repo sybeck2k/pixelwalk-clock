@@ -10,7 +10,7 @@ Pixelwalk needs only Pillow at run time, and `~/led-venv` already has Pillow 11.
 
 1. **(changes the Pi)** Copy the code over, from this repo on the PC:
 
-       rsync -av --exclude .venv --exclude .git --exclude out ./ ubuntu@<pi>:/home/ubuntu/pixelwalk/
+       rsync -av --exclude .venv --exclude .git --exclude out ./ <user>@<pi>:pixelwalk/
 
    No hostnames, keys or credentials go in the repo.
 2. Compose-only timing on the Pi (no panel needed, safe to run as the normal user):
@@ -71,7 +71,7 @@ time, the network or the light sensor.
 ## Settings and the control page on the Pi
 
 The panel library drops root after it starts, so the app then runs as user `daemon` and cannot
-write into `/home/ubuntu`. Two files are affected: `state/settings.json` (changes made on the
+write into your home directory. Two files are affected: `state/settings.json` (changes made on the
 control page) and `state/weather.json` (the weather cache). Until the service is installed
 (phase 7), changes still take effect immediately but only last until restart, and a warning is
 logged once. For persistence, create a folder `daemon` can write and point both at it in
@@ -92,3 +92,9 @@ To reach the control page from your PC, enable it with a token and a host the ne
     token = "something-long"
 
 then browse to `http://<pi>:8080/?token=something-long`.
+
+## Sensors on the Pi
+
+The `pi` profile runs the panel with the system clock and nothing else. To add sensors, a PIR or
+the weather feed, copy what you need from `config/examples/pi-sensors.toml` into
+`/etc/pixelwalk/config.toml` (or `config/local.toml`) and adjust the sysfs paths to your drivers.
