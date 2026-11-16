@@ -4,6 +4,7 @@ After=multi-user.target
 
 [Service]
 ExecStart=/home/ubuntu/led-venv/bin/python -m pixelwalk --profile pi --config /etc/pixelwalk/config.toml
+Environment=PYTHONPATH=/opt/pixelwalk/src
 WorkingDirectory=/opt/pixelwalk
 User=root
 Restart=on-failure
