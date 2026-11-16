@@ -26,7 +26,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from .adapters.motion_sim import SimMotionInput
 from .adapters.scenario import DEFAULTS, parse_start
+from .adapters.sensors_sim import SimSensors
+from .adapters.weather_sim import SimWeather
 from .ports import Condition
 
 log = logging.getLogger("pixelwalk.control")
@@ -158,6 +161,13 @@ class ControlServer:
             "conditions": list(Condition.__members__),
             "trends": list(TRENDS),
             "clock_is_simulated": hasattr(clock, "set"),
+            # Which inputs the scenario really drives. The others are real, and their controls would do nothing.
+            "simulated": {
+                "weather": isinstance(self.app.weather, SimWeather),
+                "sensors": isinstance(self.app.sensors, SimSensors),
+                "motion": isinstance(self.app.motion, SimMotionInput),
+            },
+            "modified": any(sc.values.get(k) != sc.base.get(k) for k in SCENARIO_KEYS),
             "time": clock.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
 
@@ -165,12 +175,19 @@ class ControlServer:
         sc = self.app.scenario
         if sc is None:
             return False, ["there are no simulated inputs in this configuration"]
+        changes = dict(changes)
+        reset = changes.pop("reset", False)
+        if reset not in (True, False):
+            return False, ["reset must be true"]
         values, when, speed, errors = check_scenario_changes(changes)
         clock = self.app.clock
         if (when is not None or speed is not None) and not hasattr(clock, "set"):
             errors.append("the clock is not simulated (use the sim clock to set the time)")
         if errors:
             return False, errors
+        if reset:  # back to the scenario file's own values: nothing forced, nothing overridden
+            sc.values.clear()
+            sc.values.update(sc.base)
         sc.values.update(values)
         if when is not None:
             clock.set(parse_start(when))
@@ -342,13 +359,18 @@ async function sim() {
   const sel = (opts, cur, key) => { const e = document.createElement('select');
     opts.forEach(o => { const op = document.createElement('option'); op.value = o; op.textContent = o || '(from barometer)'; e.append(op); });
     e.value = cur; e.onchange = () => send({[key]: e.value}); return e; };
-  add('Weather', sel(s.conditions, s.values.weather, 'weather'));
-  for (const [k, l] of [['outdoor_c','Outdoor C'],['indoor_c','Indoor C'],['lux','Light (lux)'],['gust_kmh','Gusts km/h'],['pressure_hpa','Pressure hPa']]) {
-    const e = document.createElement('input'); e.type = 'number'; e.value = s.values[k]; e.step = 'any';
-    e.onchange = () => send({[k]: parseFloat(e.value)}); add(l, e); }
-  const m = document.createElement('input'); m.type = 'checkbox'; m.checked = s.values.motion;
-  m.onchange = () => send({motion: m.checked}); add('Someone in the room', m);
-  add('Pressure trend', sel(s.trends, s.values.pressure_trend, 'pressure_trend'));
+  const sm = s.simulated;
+  const note = document.createElement('p'); note.className = 'hint';
+  note.textContent = 'In use: weather ' + (sm.weather ? 'SIMULATED' : 'real') + ', sensors ' + (sm.sensors ? 'SIMULATED' : 'real') +
+    ', motion ' + (sm.motion ? 'SIMULATED' : 'real') + ', clock ' + (s.clock_is_simulated ? 'SIMULATED' : 'real') + '.';
+  body.append(note);
+  const num = (k, l) => { const e = document.createElement('input'); e.type = 'number'; e.value = s.values[k]; e.step = 'any';
+    e.onchange = () => send({[k]: parseFloat(e.value)}); add(l, e); };
+  if (sm.weather) { add('Weather', sel(s.conditions, s.values.weather, 'weather')); num('outdoor_c', 'Outdoor C'); num('gust_kmh', 'Gusts km/h'); }
+  if (sm.sensors) { num('indoor_c', 'Indoor C'); num('lux', 'Light (lux)'); num('pressure_hpa', 'Pressure hPa'); }
+  if (sm.motion) { const m = document.createElement('input'); m.type = 'checkbox'; m.checked = s.values.motion;
+    m.onchange = () => send({motion: m.checked}); add('Someone in the room', m); }
+  add('Pressure trend (overrides the barometer)', sel(s.trends, s.values.pressure_trend, 'pressure_trend'));
   if (s.clock_is_simulated) {
     const t = document.createElement('input'); t.type = 'text'; t.value = s.time; t.style.width = '170px';
     const b = document.createElement('button'); b.textContent = 'Set time';
@@ -356,6 +378,9 @@ async function sim() {
     const sp = document.createElement('input'); sp.type = 'number'; sp.value = 1; sp.min = 0;
     sp.onchange = () => send({speed: parseFloat(sp.value)}); add('Time speed (x)', sp);
   }
+  const back = document.createElement('button'); back.textContent = 'Back to normal (clear every override)';
+  back.onclick = async () => { await send({reset: true}); body.innerHTML = ''; delete body.dataset.built; sim(); };
+  body.append(back);
 }
 async function live() {
   try {

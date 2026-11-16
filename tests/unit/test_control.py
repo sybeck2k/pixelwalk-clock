@@ -70,6 +70,29 @@ def test_valid_changes_apply_together_and_bump_the_version(tmp_path):
     assert s.version == 1
 
 
+def test_scenario_reports_what_is_simulated_and_can_be_cleared(served):
+    _app, _ft, server = served
+    _, sc = call(server, "/api/scenario")
+    assert sc["simulated"] == {"weather": True, "sensors": True, "motion": True} and not sc["modified"]
+    call(server, "/api/scenario", {"weather": "rain", "pressure_trend": "worsening", "motion": False})
+    _, sc = call(server, "/api/scenario")
+    assert sc["modified"]
+    code, body = call(server, "/api/scenario", {"reset": True})
+    assert code == 200 and body["ok"]
+    _, sc = call(server, "/api/scenario")
+    assert not sc["modified"] and sc["values"]["pressure_trend"] == "" and sc["values"]["motion"] is True
+    assert call(server, "/api/scenario", {"reset": "yes"})[0] == 400
+
+
+def test_scenario_says_real_inputs_are_real(served):
+    from pixelwalk.adapters.null import NullMotion, NullSensors, NullWeather
+
+    app, _ft, server = served
+    app.sensors, app.motion, app.weather = NullSensors(app.clock), NullMotion(), NullWeather()
+    _, sc = call(server, "/api/scenario")
+    assert sc["simulated"] == {"weather": False, "sensors": False, "motion": False}
+
+
 @pytest.mark.parametrize("changes,fragment", [
     ({"display.max_brightness_pct": 0}, "between 1 and 100"),
     ({"display.max_brightness_pct": 101}, "between 1 and 100"),
