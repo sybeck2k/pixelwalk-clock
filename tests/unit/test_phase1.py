@@ -96,12 +96,14 @@ def test_parse_start_with_and_without_seconds():
 
 
 def test_openmeteo_backend_requires_coordinates_with_a_clear_message(tmp_path):
-    with pytest.raises(ConfigError, match=r"weather\.latitude is required"):
-        load_config(ROOT / "config", "pi")
     bad = tmp_path / "l.toml"
-    bad.write_text("[weather]\nlatitude = 95\nlongitude = 2.35\n")
+    head = '[weather]\nbackend = "openmeteo"\n'
+    bad.write_text(head)
+    with pytest.raises(ConfigError, match=r"weather\.latitude is required"):
+        load_config(ROOT / "config", "pi", bad)
+    bad.write_text(head + "latitude = 95\nlongitude = 2.35\n")
     with pytest.raises(ConfigError, match="between -90 and 90"):
         load_config(ROOT / "config", "pi", bad)
-    bad.write_text("[weather]\nlatitude = 48.85\n")
+    bad.write_text(head + "latitude = 48.85\n")
     with pytest.raises(ConfigError, match=r"weather\.longitude is required"):
         load_config(ROOT / "config", "pi", bad)

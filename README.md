@@ -97,8 +97,9 @@ when it is not. With no motion sensor the room counts as always occupied. The to
 indoor temperature (top-left; cyan below `hero.cold_c`, orange above `hero.hot_c`) and the outdoor
 temperature (top-right), with the date (`NOV 16`) between them; each can be switched off under `[hud]`.
 
-Real sensors are read from the kernel drivers' sysfs files (`sensors.backend = "sysfs"`; any
-unreadable file just means "no reading") and the PIR from a GPIO line with libgpiod
+Real sensors are read from the kernel drivers' sysfs files (`sensors.backend = "sysfs"` with the
+paths of your drivers' files, see `config/examples/pi-sensors.toml`; any unreadable file just means
+"no reading") and the PIR from a GPIO line with libgpiod
 (`motion.backend = "gpio"`, both the 1.x and 2.x Python APIs work). The demo (`--demo`) shows
 the whole sleep-and-wake sequence with shortened timings.
 

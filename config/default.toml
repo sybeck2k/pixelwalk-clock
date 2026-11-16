@@ -17,12 +17,12 @@ show_refresh_rate = false  # the library prints this to stdout; leave off in the
 [sensors]
 backend = "sim"           # sim | sysfs | none | "pkg.module:factory" (your own)
 poll_interval_s = 1.0
-# Kernel driver files (sysfs). Any unreadable file just means "no reading".
-illuminance_path = "/sys/bus/i2c/devices/1-0010/illuminance"   # true lux
-lux_legacy_path = "/sys/bus/i2c/devices/1-0010/lux"            # kilolux; used only if the file above is missing
-temperature_path = "/sys/bus/i2c/devices/1-0038/temperature"   # indoor, degC
-humidity_path = "/sys/bus/i2c/devices/1-0038/humidity"
-pressure_path = "/sys/bus/i2c/devices/1-0077/pressure"         # hPa
+# For the sysfs backend, name the files your drivers publish (all optional; an unset or unreadable
+# one just means "no reading"). Example layout: config/examples/pi-sensors.toml
+# illuminance_path = "/sys/bus/iio/devices/iio:device0/in_illuminance_input"   # lux
+# temperature_path = ...   # indoor, degC          humidity_path = ...   # %RH
+# pressure_path = ...      # hPa (feeds the barometer clouding)
+# lux_legacy_path = ...    # only if your driver's `lux` file is kilolux; used when illuminance_path is missing
 
 [motion]
 backend = "sim"           # sim | gpio | none | "pkg.module:factory"

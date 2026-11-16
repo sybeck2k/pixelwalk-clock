@@ -1,10 +1,13 @@
+# A Raspberry Pi with the panel and nothing else: no sensors, no motion input, no weather feed.
+# The app runs fine like that (fixed brightness, always occupied, clear sky). Add what you have in
+# config/local.toml; config/examples/pi-sensors.toml shows sysfs sensors, a PIR and Open-Meteo.
 [display]
 backend = "matrix"
 [sensors]
-backend = "sysfs"
+backend = "none"
 [motion]
-backend = "gpio"
+backend = "none"
 [weather]
-backend = "openmeteo"
+backend = "none"
 [clock]
 backend = "system"

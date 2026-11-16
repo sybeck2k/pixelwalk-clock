@@ -1,0 +1,19 @@
+# Example: the author's Raspberry Pi 3B with I2C sensors behind custom kernel drivers
+# (VEML7700 light, AHT20 temperature/humidity, BMP280 pressure) and a PIR on GPIO16.
+# Copy what you need into config/local.toml (or /etc/pixelwalk/config.toml). Every part is optional:
+# with `backend = "none"` (or no section at all in a profile that sets it) the app just does without.
+[sensors]
+backend = "sysfs"
+illuminance_path = "/sys/bus/i2c/devices/1-0010/illuminance"   # true lux
+lux_legacy_path = "/sys/bus/i2c/devices/1-0010/lux"            # kilolux; used only if the file above is missing
+temperature_path = "/sys/bus/i2c/devices/1-0038/temperature"   # indoor, degC
+humidity_path = "/sys/bus/i2c/devices/1-0038/humidity"
+pressure_path = "/sys/bus/i2c/devices/1-0077/pressure"         # hPa
+
+[motion]
+backend = "gpio"          # needs libgpiod's Python bindings
+chip = "gpiochip0"
+line = 16
+
+[weather]
+backend = "openmeteo"     # also set latitude and longitude
