@@ -126,10 +126,23 @@ def effect_target(
     return t
 
 
-def hero_accessory(rain: float, snow: float, threshold: float = 0.3) -> str | None:
-    """Which accessory the hero carries, from the faded-in effect levels."""
+def hero_accessory(
+    rain: float,
+    snow: float,
+    threshold: float = 0.3,
+    indoor_c: float | None = None,
+    cold_c: float | None = None,
+    hot_c: float | None = None,
+) -> str | None:
+    """What the hero carries or shows (spec 7.8): umbrella in rain; scarf in snow or when the room
+    is cold; sweat when the room is hot. Rain wins over snow, and weather over the room."""
     if rain >= threshold:
         return "umbrella"
     if snow >= threshold:
         return "scarf"
+    if indoor_c is not None:
+        if cold_c is not None and indoor_c < cold_c:
+            return "scarf"
+        if hot_c is not None and indoor_c > hot_c:
+            return "sweat"
     return None

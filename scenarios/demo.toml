@@ -1,4 +1,4 @@
-# Demo mode: a scripted tour of the features, about 6.5 minutes, looping.
+# Demo mode: a scripted tour of the features, about 10 minutes, looping.
 #
 #   .venv/Scripts/python -m pixelwalk --profile dev --demo            (PC, http://localhost:8888)
 #   sudo env PYTHONPATH=src ~/led-venv/bin/python -m pixelwalk --profile pi-check --demo   (Pi)
@@ -20,7 +20,7 @@ wind_kmh = 5
 gust_kmh = 10
 
 [demo]
-length = 462
+length = 584
 loop = true
 
 # --- the clock and the time of day ---------------------------------------------------------
@@ -189,3 +189,53 @@ reset = false
 at = 449
 label = "Someone walks in: the display wakes, the robot stretches"
 motion = true
+
+# --- moods, events and date specials ---------------------------------------------------------
+
+[[sim.timeline]]
+at = 462
+label = "A hot room (29 C): the robot sweats"
+time = "2026-07-02 12:00:00"
+indoor_c = 29
+
+[[sim.timeline]]
+at = 474
+label = "A cold room (14 C): the robot wears a scarf"
+indoor_c = 14
+
+[[sim.timeline]]
+at = 486
+label = "Event: a bird flies by"
+event = "bird"
+
+[[sim.timeline]]
+at = 496
+label = "Event: a coin to pick up"
+event = "coin"
+
+[[sim.timeline]]
+at = 514
+label = "Night event: a shooting star"
+time = "2026-07-12 23:10:00"
+event = "shooting_star"
+
+[[sim.timeline]]
+at = 524
+label = "Halloween: pumpkins roll past, their faces glow"
+time = "2026-10-31 12:00:00"
+
+[[sim.timeline]]
+at = 540
+label = "Christmas: a string of lights over the clock"
+time = "2026-12-24 19:00:00"
+
+[[sim.timeline]]
+at = 552
+label = "A birthday: a cake rolls past, with confetti"
+time = "2026-07-02 12:00:00"
+event = "cake"
+
+[[sim.timeline]]
+at = 568
+label = "The hour changes: both blocks bump and sparkle"
+time = "2026-07-02 12:59:48"

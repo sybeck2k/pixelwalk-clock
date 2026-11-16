@@ -84,6 +84,10 @@ PARAMS: list[Param] = [
           "Indoor temperature shown in cyan below this."),
     Param("hero.hot_c", "float", "Status row", "Hot above (C)", -20, 50, 0.5,
           "Indoor temperature shown in orange above this."),
+    Param("events.enabled", "bool", "Extras", "Events and date specials",
+          hint="Birds, shooting stars, coins, the hour burst, and the dated looks."),
+    Param("events.rate", "float", "Extras", "Random event frequency (x)", 0, 10, 0.1,
+          "1 is about a few an hour; 0 turns random events off but keeps the dated looks."),
     Param("clock.hour24", "bool", "Clock", "24-hour clock"),
     Param("director.min_stay_s", "float", "World", "Minimum stay in a biome (s)", 0, 86400, 10,
           "Stops the scenery from flapping between biomes."),
@@ -260,4 +264,5 @@ def apply_settings(app: Any, values: dict[str, Any]) -> None:
     r.hud_indoor, r.hud_outdoor = values["hud.indoor"], values["hud.outdoor"]
     r.cold_c, r.hot_c = values["hero.cold_c"], values["hero.hot_c"]
     r.clockface.hour24 = values["clock.hour24"]
+    r.events.enabled, r.events.rate = values["events.enabled"], values["events.rate"]
     r.selector.min_stay_s = values["director.min_stay_s"]

@@ -31,11 +31,18 @@ from ..logic.astro import (
 from ..logic.clockface import GROUND_Y, HOME_X, ClockFace, HeroOverride
 from ..logic.director import Biome, BiomeSelector, effect_target, hero_accessory
 from ..logic.effects import EffectState
+from ..logic.events import (
+    STYLES,
+    EventScheduler,
+    active_styles,
+    parse_events_config,
+)
 from ..logic.hero import Hero
 from ..logic.presence import PresenceState
 from ..logic.transition import Transition
 from ..state import WorldSnapshot
 from .assets import Assets, load_assets
+from .events import Sparkles, bird_position, draw_lights, draw_props, draw_shooting_star
 from .hud import Hud, format_temp
 from .particles import Clouds, Lightning, Rain, Snow, Wind
 from .phases import phase_palette, remap_image
@@ -116,6 +123,7 @@ class Renderer:
         hud_outdoor: bool = True,
         cold_c: float = 18.0,
         hot_c: float = 26.0,
+        events: dict | None = None,
     ) -> None:
         self.width, self.height = width, height
         self.assets = assets or load_assets(assets_dir)
@@ -131,6 +139,16 @@ class Renderer:
         # Settings the control page can change while the app runs.
         self.hud_indoor, self.hud_outdoor, self.cold_c, self.hot_c = hud_indoor, hud_outdoor, cold_c, hot_c
         self._camp_x: float | None = None
+        ev = events or {}
+        self.events = EventScheduler(random.Random(seed + 7), ev.get("enabled", True), ev.get("rate", 1.0))
+        self.sparkles = Sparkles(random.Random(seed + 8))
+        self._dated, self._birthdays = parse_events_config(ev)
+        self._styles: frozenset[str] = frozenset()
+        self._styles_day = None
+        self._forced_seen = ""
+        self._event_seen: float | None = None
+        self._coin_wx = 0.0
+        self._confetti_at = 0.0
 
         self._stars = build_star_images(self.assets, width, random.Random(seed + 1))
         self._sun = self.assets["sun"].frames[0]
@@ -146,6 +164,7 @@ class Renderer:
         names = (
             "hero_walk", "hero_idle", "hero_jump", "umbrella", "scarf",
             "hero_sit", "hero_wake", "sleep_z", "campfire",
+            "sweat", "bird", "coin", "pumpkin", "cake",
         )
         self._hero = {  # pre-tinted per phase, so no colour maths per frame
             p: {n: [remap_image(f, master, actor[p]) for f in self.assets[n].frames] for n in names} for p in Phase
@@ -263,7 +282,12 @@ class Renderer:
                 self._transition, tv = None, None
 
         # Clock and hero.
+        prev_shown = self.clockface.shown
         view = self.clockface.update(now, t, hero_available=not (tv and tv.busy) and active)
+        shown = self.clockface.shown
+        if self.events.enabled and prev_shown and shown and shown[0] != prev_shown[0]:
+            for key in ("hh", "mm"):  # the hour change: a short burst over both blocks
+                self.sparkles.burst(BLOCK_X[key] + 9, BLOCK_Y + 2, 10)
         override = tv.hero if (tv and tv.hero) else None
         sleeping = False
         if override is None and pv is not None and not active:
@@ -275,6 +299,7 @@ class Renderer:
         if override is None:
             override = view.hero
         draw = self.hero.update(t, override, force_walk=bool(tv and tv.force_walk))
+        ev = self._event(snap, t, now, hero_phase, allowed=active and tv is None and not self.clockface.bumping)
 
         # Weather effects.
         target = effect_target(
@@ -296,21 +321,28 @@ class Renderer:
         for c in self.clouds.clouds:
             cimg = self._cloud_image(c.kind, blend)
             img.paste(cimg, (round(c.x), c.y), cimg)
+        if ev is not None and ev.name == "shooting_star" and lv.clear >= 0.5:
+            draw_shooting_star(self._draw, ev.progress(t), ev.seed, self._pal[hero_phase])
         far_visibility = 1.0 - min(1.0, lv.fog / 0.6)
         self.world.draw_strips(img, self.hero.world_x, self.biome, blend, far_visibility)
 
         sprites = self._hero[hero_phase]
+        self._event_scenery(img, sprites, ev, t, dt, draw)
         sprite = sprites[draw.sprite][draw.frame]
         img.paste(sprite, (draw.x, draw.y), sprite)
         self._campfire(img, sprites, t, dt, pv, draw, sleeping)
         if tv is None and active:
-            acc = hero_accessory(lv.rain, lv.snow)
+            indoor = snap.sensors.temperature_c if snap.sensors is not None else None
+            acc = hero_accessory(lv.rain, lv.snow, indoor_c=indoor, cold_c=self.cold_c, hot_c=self.hot_c)
             if acc == "umbrella":
                 u = sprites["umbrella"][0]
                 img.paste(u, (draw.x, draw.y - 3), u)
             elif acc == "scarf":
                 sc = sprites["scarf"][int(t * 3) % 2]
                 img.paste(sc, (draw.x, draw.y + 8), sc)
+            elif acc == "sweat":
+                drop = sprites["sweat"][0]  # a drop slides down the side of the head, then repeats
+                img.paste(drop, (draw.x + 13, draw.y + 1 + int(t * 3) % 4), drop)
         if tv is not None and tv.pipe_x is not None and tv.pipe_biome is not None:
             pipe = self._pipes[hero_phase][tv.pipe_biome]
             img.paste(pipe, (tv.pipe_x, PIPE_Y), pipe)
@@ -328,13 +360,60 @@ class Renderer:
 
         self._block_with_digits(img, "hh", view.hh, view.hh_dy)
         self._block_with_digits(img, "mm", view.mm, view.mm_dy)
+        self.sparkles.update(dt)
+        self.sparkles.draw(self._draw, self._pal[hero_phase])
         self._status_row(img, snap, hero_phase)
+        if "lights" in self._styles:
+            draw_lights(self._draw, t, self.width, self.assets.palette)  # untinted: bulbs glow at night
         if tv is not None and tv.wipe is not None:
             kind, w = tv.wipe
             box = (0, 0, w, self.height) if kind == "close" else (w, 0, self.width, self.height)
             if box[2] > box[0]:
                 img.paste((0, 0, 0), box)
         return img
+
+    def _event(self, snap: WorldSnapshot, t: float, now: datetime, phase: Phase, allowed: bool):
+        """The random event playing now (or None), and which dated styles are on today."""
+        forced = snap.forced_event
+        day = (now.date(), forced, self.events.enabled)
+        if day != self._styles_day:
+            self._styles_day = day
+            styles = set(active_styles(now.date(), self._dated, self._birthdays)) if self.events.enabled else set()
+            if forced in STYLES:
+                styles.add(forced)
+            self._styles = frozenset(styles)
+        if forced != self._forced_seen:
+            self._forced_seen = forced
+            if forced and self.events.enabled:
+                self.events.trigger(forced, t)
+        ev = self.events.update(t, phase, allowed, walking=self.hero.walking)
+        if ev is not None and ev.start != self._event_seen:
+            self._event_seen = ev.start
+            if ev.name == "coin":  # it sits in the world ahead of the robot and scrolls toward it
+                self._coin_wx = self.hero.world_x + self.width + 6
+        return ev
+
+    def _event_scenery(self, img, sprites, ev, t: float, dt: float, draw) -> None:
+        """Things that stand in the scene behind the robot: a bird, the coin, pumpkins, the cake."""
+        if ev is not None and ev.name == "bird":
+            x, y = bird_position(ev.progress(t), ev.seed, self.width)
+            bird = sprites["bird"][int(t * 6) % 2]
+            img.paste(bird, (x, y), bird)
+        elif ev is not None and ev.name == "coin":
+            x = round(self._coin_wx - self.hero.world_x)
+            y = GROUND_Y + 4 + round(1.5 * ((t * 2) % 2 - 1) ** 2)
+            coin = sprites["coin"][int(t * 4) % 2]
+            img.paste(coin, (x, y), coin)
+            if x <= draw.x + 8:  # picked up
+                self.sparkles.burst(x + 2, y + 2, 12)
+                self.events.finish(t)
+        if "pumpkins" in self._styles:
+            draw_props(img, sprites["pumpkin"][int(t * 2) % 2], self.hero.world_x, 80, GROUND_Y + 16)
+        if "cake" in self._styles:
+            pos = draw_props(img, sprites["cake"][int(t * 4) % 2], self.hero.world_x, 130, GROUND_Y + 16)
+            if pos is not None and t >= self._confetti_at:
+                self.sparkles.burst(pos[0] + 5, pos[1], 4)
+                self._confetti_at = t + 0.8
 
     def _campfire(self, img, sprites, t, dt, pv, draw, sleeping) -> None:
         resting = pv is not None and pv.state in (PresenceState.DROWSY, PresenceState.WAKING, PresenceState.DARK)

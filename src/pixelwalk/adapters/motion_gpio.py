@@ -15,6 +15,8 @@ import logging
 import threading
 from types import ModuleType
 
+from .null import NullMotion
+
 log = logging.getLogger("pixelwalk.motion")
 
 FAILURES_BEFORE_UNAVAILABLE = 3
@@ -24,14 +26,7 @@ class MotionUnavailable(Exception):
     pass
 
 
-class UnavailableMotion:
-    """Stands in when there is no motion sensor: motion() is None, so the room counts as occupied."""
-
-    def motion(self) -> None:
-        return None
-
-    def close(self) -> None:
-        pass
+UnavailableMotion = NullMotion  # the name this module has always exported
 
 
 class GpioMotionInput:

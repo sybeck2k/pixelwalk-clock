@@ -19,6 +19,7 @@ DEFAULTS: dict[str, Any] = {
     "outdoor_c": 18.0,
     "wind_kmh": 5.0,
     "gust_kmh": 10.0,
+    "event": "",  # demo/testing: shooting_star, bird, coin, or a dated look (lights, pumpkins, cake)
     "pressure_trend": "",  # "", "worsening", "steady" or "improving": forces the barometer trend
 }
 

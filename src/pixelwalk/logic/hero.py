@@ -28,6 +28,11 @@ class Hero:
         self._last: float | None = None
         self.world_x = 0.0  # distance walked; the world scrolls by this
 
+    @property
+    def walking(self) -> bool:
+        """True while the ambient walk is on (not paused, not overridden)."""
+        return self._walking
+
     def update(
         self, mono: float, override: HeroOverride | None, force_walk: bool = False
     ) -> HeroDraw:

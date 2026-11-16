@@ -569,6 +569,9 @@ A small scheduler picks rare extras, at most one at a time and never during a tr
 
 Events are data-driven: a name, a condition, a probability per hour, and an animation.
 
+Built (phase 7): shooting star, bird, coin and the hour burst; dated looks `lights`, `pumpkins`,
+`cake` from `[events]` (see the README).
+
 ### 7.11 Biome transition
 
 1. A pipe or door scrolls in from the right.

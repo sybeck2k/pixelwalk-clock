@@ -70,18 +70,19 @@ To review every condition and biome at once:
 
 ## Demo mode
 
-A scripted tour of the features, about 6.5 minutes, looping until you stop it (Ctrl-C):
+A scripted tour of the features, about 10 minutes, looping until you stop it (Ctrl-C):
 
     .venv/Scripts/python -m pixelwalk --profile dev --demo        # then open http://localhost:8888
 
 It covers the clock bump and the hour change, dawn, dusk and night with the moon, two time-lapses,
 every weather condition, the snow and desert biomes through the pipe, the barometer, and the
-brightness range ending in fully off and back on. Each step's label is printed to the log.
+brightness range ending in fully off and back on, the sleep-and-wake sequence, the robot's
+moods and every event and date special. Each step's label is printed to the log.
 On the Pi (profile `pi-check`, see `deploy/README.md`) it runs on the real panel.
 
 The script is `scenarios/demo.toml`: a `[[sim.timeline]]` list of steps, each firing at `at`
 seconds after the start. A step can set the simulated clock (`time`, `speed`) and override any
-scenario value (`weather`, `outdoor_c`, `gust_kmh`, `lux`, `pressure_trend`, ...). Every step
+scenario value (`weather`, `outdoor_c`, `gust_kmh`, `lux`, `pressure_trend`, `event`, ...). Every step
 starts from the `[sim]` values, so nothing leaks between steps. Demo mode switches to a simulated
 clock, shortens the biome minimum stay to 8 s and turns on dark mode (your own settings win).
 
@@ -101,6 +102,69 @@ unreadable file just means "no reading") and the PIR from a GPIO line with libgp
 (`motion.backend = "gpio"`, both the 1.x and 2.x Python APIs work). The demo (`--demo`) shows
 the whole sleep-and-wake sequence with shortened timings.
 
+## Moods, events and date specials
+
+The robot reacts to the weather and the room: an umbrella in rain, a scarf in snow or when the
+room is colder than `hero.cold_c`, and a sweat drop when it is hotter than `hero.hot_c` (weather
+wins over the room). Now and then something extra happens, never during a pipe trip, a clock bump
+or while the robot rests, and never two at once:
+
+- a **bird** crosses the sky by day, a **shooting star** streaks across at night,
+- a **coin** appears ahead and the robot picks it up (sparkles),
+- a burst of **sparkles** over both blocks when the hour changes.
+
+Dated looks come from `[events]` in the config: `lights` (a string of bulbs over the clock),
+`pumpkins` (they roll past, faces glowing) and `cake` (confetti). Each `[[events.dated]]` entry
+has a name, a `from` and `to` date as `"MM-DD"` (inclusive, a range may wrap the new year) and a
+style; the defaults are Christmas lights on 1-26 December and pumpkins on 25-31 October. A cake
+rolls past on every date in `events.birthdays`: put real dates only in `config/local.toml`, which
+is not committed. `events.enabled` switches all of it off, `events.rate` scales how often random
+events happen (0 keeps only the dated looks); both can be changed while running. In demo mode or
+a scenario, `event = "bird"` (or `coin`, `shooting_star`, `lights`, `pumpkins`, `cake`) shows one now.
+
+## Using other hardware
+
+The scene and the behaviour (`logic/`, `render/`) never touch hardware: they see only the small
+interfaces in `src/pixelwalk/ports.py`. Every input and output is chosen by a `backend` setting:
+
+| Setting | Built in | Needs |
+|---|---|---|
+| `sensors.backend` | `sim`, `sysfs`, `none` | `read() -> SensorReading` (any field may be `None`) |
+| `motion.backend` | `sim`, `gpio`, `none` | `motion() -> bool \| None`, `close()` |
+| `weather.backend` | `sim`, `openmeteo`, `none` | `get() -> Weather \| None` |
+| `display.backend` | `emulator`, `png`, `matrix` | `show(frame)`, `set_brightness(pct)`, `close()` |
+
+`none` means the app simply does without: no light sensor gives the fallback brightness and no
+temperature, no motion input means the room is always occupied, no weather keeps a clear sky.
+Every other value is cheap to leave out, so a board with only a light sensor, or none, works.
+
+To use your own device (an I2C sensor, an MQTT feed, a different LED panel), write a factory and
+name it in the config as `"package.module:factory"`:
+
+    # my_hw.py, anywhere on PYTHONPATH
+    from pixelwalk.ports import SensorReading
+
+    class MyLux:
+        def __init__(self, section, ctx):
+            self.clock = ctx.clock
+            self.address = section["address"]          # your own keys sit next to `backend`
+        def read(self):
+            return SensorReading(lux=my_driver(self.address), temperature_c=None,
+                                 humidity_pct=None, pressure_hpa=None, at=self.clock.now())
+
+    def factory(section, ctx):
+        return MyLux(section, ctx)
+
+    # config/local.toml
+    [sensors]
+    backend = "my_hw:factory"
+    address = 0x10
+
+`read()`, `motion()` and `get()` must never raise (return `None` for a missing value) and must not
+block for long. If the object also has `start()` and `stop()` they run around the main loop, the
+way to poll a slow source from a thread (see the weather adapter). `ctx` gives the clock, the
+project root and the whole config. A test checks that `logic/` and `render/` import no adapter.
+
 ## Maximum brightness
 
 `display.max_brightness_pct` is the panel's ceiling. The application works in 0-100 *relative* to
@@ -110,7 +174,7 @@ The brightness curve (`brightness.*`) and presence dimming are all relative valu
 ## Changing settings while it runs
 
 Every tunable (ceiling, brightness curve, dark mode, presence timings, quiet hours, status row,
-cold/hot thresholds, 12/24 h, biome minimum stay) can be changed on the running app. Changes
+cold/hot thresholds, events, 12/24 h, biome minimum stay) can be changed on the running app. Changes
 are validated together (a request with one bad value changes nothing), applied within a frame,
 and remembered in `state/settings.json` so they survive a restart; "Reset" returns to the config
 file. Turn on the control page in `config/local.toml`:

@@ -35,9 +35,9 @@ def _load(path: Path) -> dict:
 _CHOICES: dict[str, tuple] = {
     "display.backend": ({"emulator", "matrix", "png"},),
     "display.rotation": ({0, 90, 180, 270},),
-    "sensors.backend": ({"sim", "sysfs"},),
-    "motion.backend": ({"sim", "gpio"},),
-    "weather.backend": ({"sim", "openmeteo"},),
+    "sensors.backend": ({"sim", "sysfs", "none"},),
+    "motion.backend": ({"sim", "gpio", "none"},),
+    "weather.backend": ({"sim", "openmeteo", "none"},),
     "clock.backend": ({"sim", "system"},),
 }
 
@@ -46,8 +46,8 @@ def validate(cfg: dict[str, Any]) -> None:
     for dotted, (allowed,) in _CHOICES.items():
         section, key = dotted.split(".")
         value = cfg.get(section, {}).get(key)
-        if value is None:
-            continue
+        if value is None or (":" in str(value) and section != "clock"):
+            continue  # "package.module:factory" names your own adapter (adapters/registry.py)
         if value not in allowed:
             raise ConfigError(f"{dotted} = {value!r} is invalid; expected one of {sorted(allowed)}")
     w = cfg.get("weather", {})
@@ -88,6 +88,17 @@ def validate(cfg: dict[str, Any]) -> None:
             raise ConfigError(f"brightness: {e}") from None
         if problem:
             raise ConfigError(problem)
+    ev = cfg.get("events")
+    if ev is not None:
+        from .logic.events import parse_events_config
+
+        try:
+            parse_events_config(ev)
+        except ValueError as e:
+            raise ConfigError(str(e)) from None
+        rate = ev.get("rate", 1.0)
+        if not isinstance(rate, (int, float)) or isinstance(rate, bool) or not 0 <= rate <= 10:
+            raise ConfigError(f"events.rate = {rate!r} must be a number between 0 and 10")
     fps = cfg.get("display", {}).get("target_fps", 30)
     if not isinstance(fps, (int, float)) or fps <= 0:
         raise ConfigError(f"display.target_fps = {fps!r} must be a positive number")

@@ -1,0 +1,83 @@
+# Event and mood sprites (spec 7.8, 7.10). Original art, same palette as everything else.
+
+# A drop of sweat on the hot robot's head; the renderer slides it down.
+sprite sweat 3x4
+frame drop
+.c.
+cwc
+ccc
+.c.
+
+# A bird crossing the sky, wings up then down.
+sprite bird 5x3
+frame up
+A...A
+.AAA.
+..A..
+frame down
+..A..
+.AAA.
+A...A
+
+# A coin the robot picks up: face on, then turned.
+sprite coin 5x5
+frame face
+.kkk.
+kyyYk
+kywYk
+kyyYk
+.kkk.
+frame edge
+.kkk.
+.kyYk
+.kwYk
+.kyYk
+.kkk.
+
+# A carved pumpkin (Halloween): the face glows on the second frame.
+sprite pumpkin 10x9 ground
+frame dark
+....bb....
+...bG.....
+.kkkkkkkk.
+kBBBBBBBBk
+kBkBBBBkBk
+kBBBBBBBBk
+kBkBkBkBBk
+kBBkkkkBBk
+.kkkkkkkk.
+frame glow
+....bb....
+...bG.....
+.kkkkkkkk.
+kBBBBBBBBk
+kByBBBByBk
+kBBBBBBBBk
+kByByByBBk
+kBByyyyBBk
+.kkkkkkkk.
+
+# A birthday cake with a flickering candle.
+sprite cake 11x10 ground
+frame flame_a
+.....y.....
+.....p.....
+.kkkkkkkkk.
+kwwwwwwwwwk
+kwpwpwpwpwk
+klllllllllk
+klllllllllk
+kpppppppppk
+klllllllllk
+.kkkkkkkkk.
+frame flame_b
+.....Y.....
+.....p.....
+.kkkkkkkkk.
+kwwwwwwwwwk
+kwpwpwpwpwk
+klllllllllk
+klllllllllk
+kpppppppppk
+klllllllllk
+.kkkkkkkkk.

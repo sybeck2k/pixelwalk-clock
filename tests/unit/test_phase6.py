@@ -395,7 +395,7 @@ def test_motion_line_is_opened_before_the_display_is_created(monkeypatch):
 
     monkeypatch.setattr(mg, "GpioMotionInput", SpyMotion)
     real_build_display = app_mod.build_display
-    monkeypatch.setattr(app_mod, "build_display", lambda cfg: (order.append("display"), real_build_display(cfg))[1])
+    monkeypatch.setattr(app_mod, "build_display", lambda cfg, ctx=None: (order.append("display"), real_build_display(cfg, ctx))[1])
     cfg = load_config(ROOT / "config", "dev")
     cfg["display"]["backend"] = "png"
     cfg["motion"]["backend"] = "gpio"

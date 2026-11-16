@@ -19,6 +19,7 @@ class WorldSnapshot:
     presence: PresenceView | None = None  # set by the main loop each frame
     last_motion_at: datetime | None = None
     pressure_trend: str = "steady"  # "worsening" | "steady" | "improving"
+    forced_event: str = ""  # demo/testing: an event or dated style to show now ("" = none)
 
 
 class WorldState:

@@ -16,7 +16,9 @@ from PIL import (
     ImageFile,  # noqa: F401  Image.tobytes() imports it lazily; after the privilege drop that import fails
 )
 
+from .adapters import registry
 from .adapters.display_scaled import ScaledDisplay
+from .adapters.registry import BuildContext
 from .adapters.scenario import Scenario, parse_start
 from .demo import Demo
 from .logic.astro import seconds_of_day
@@ -59,26 +61,13 @@ def _hhmm(text: str) -> float:
     return int(h) * 3600 + int(m) * 60
 
 
-def build_display(cfg: dict[str, Any]) -> Display:
-    d = cfg["display"]
-    if d["backend"] == "emulator":
-        from .adapters.display_emulator import EmulatorDisplay
+def build_display(cfg: dict[str, Any], ctx: BuildContext | None = None) -> Display:
+    """The display named by display.backend (see adapters/registry.py)."""
+    if ctx is None:  # callers outside build_app (the benchmark) only need the built-in displays
+        from .adapters.clock_system import SystemClock
 
-        return EmulatorDisplay(d["rows"], d["cols"])
-    if d["backend"] == "png":
-        from .adapters.display_png import PngDisplay
-
-        return PngDisplay(d["cols"], d["rows"])
-    from .adapters.display_matrix import MatrixDisplay
-
-    return MatrixDisplay(
-        rows=d["rows"],
-        cols=d["cols"],
-        hardware_mapping=d["hardware_mapping"],
-        gpio_slowdown=d["gpio_slowdown"],
-        rotation=d["rotation"],
-        show_refresh_rate=d.get("show_refresh_rate", False),
-    )
+        ctx = BuildContext(cfg, Path("."), SystemClock(), Scenario(None))
+    return registry.build_display(ctx)
 
 
 def apply_demo_config(cfg: dict[str, Any]) -> dict[str, Any]:
@@ -104,9 +93,6 @@ def build_app(
 ) -> App:
     from .adapters.clock_sim import SimClock
     from .adapters.clock_system import SystemClock
-    from .adapters.motion_sim import SimMotionInput
-    from .adapters.sensors_sim import SimSensors
-    from .adapters.weather_sim import SimWeather
 
     scenario = Scenario(root / cfg.get("sim", {}).get("scenario", "scenarios/default.toml"))
 
@@ -118,55 +104,12 @@ def build_app(
     else:
         clock = SystemClock()
 
-    weather: WeatherSource
-    background: list[Any] = []
-
-    sc = cfg["sensors"]
-    if sc["backend"] == "sysfs":
-        from .adapters.sensors_sysfs import SysfsSensors
-
-        sensors: Sensors = SysfsSensors(
-            clock,
-            illuminance_path=sc.get("illuminance_path"),
-            lux_legacy_path=sc.get("lux_legacy_path"),
-            temperature_path=sc.get("temperature_path"),
-            humidity_path=sc.get("humidity_path"),
-            pressure_path=sc.get("pressure_path"),
-        )
-    else:
-        sensors = SimSensors(scenario, clock)
-
-    mc = cfg["motion"]
-    motion: MotionInput
-    if mc["backend"] == "gpio":
-        # Open the line before the panel starts: afterwards the process may no longer be root.
-        from .adapters.motion_gpio import GpioMotionInput, MotionUnavailable, UnavailableMotion
-
-        try:
-            motion = GpioMotionInput(mc["chip"], mc["line"], mc.get("poll_hz", 5.0))
-            background.append(motion)  # its polling thread starts with the main loop
-        except MotionUnavailable as e:
-            log.warning("no motion input (%s); the display will behave as if someone is always there", e)
-            motion = UnavailableMotion()
-    else:
-        motion = SimMotionInput(scenario)
-
-    if cfg["weather"]["backend"] == "openmeteo":
-        from .adapters.weather_openmeteo import OpenMeteoWeather
-
-        w = cfg["weather"]
-        weather = OpenMeteoWeather(
-            w["latitude"],
-            w["longitude"],
-            clock,
-            cache_path=root / w["cache_path"] if w.get("cache_path") else None,
-            poll_interval_s=w["poll_interval_s"],
-            timeout_s=w["timeout_s"],
-            max_age_s=w["max_age_s"],
-        )
-        background.append(weather)  # its polling thread starts with the main loop
-    else:
-        weather = SimWeather(scenario, clock)
+    # Each input is built from its `backend` setting; nothing below depends on which one it is.
+    ctx = BuildContext(cfg, root, clock, scenario)
+    sensors = registry.build_sensors(ctx)
+    motion = registry.build_motion(ctx)
+    weather = registry.build_weather(ctx)
+    background = ctx.background
 
     d = cfg["display"]
     # Order matters on the Pi: load all assets first, create the matrix last. After the matrix
@@ -183,9 +126,10 @@ def build_app(
         hud_outdoor=cfg["hud"]["outdoor"],
         cold_c=cfg["hero"]["cold_c"],
         hot_c=cfg["hero"]["hot_c"],
+        events=cfg.get("events"),
     )
     # The application works in 0..100 relative brightness; the ceiling maps that onto the panel.
-    display = ScaledDisplay(build_display(cfg), d["max_brightness_pct"])
+    display = ScaledDisplay(build_display(cfg, ctx), d["max_brightness_pct"])
 
     app = App(
         clock=clock,
@@ -252,7 +196,7 @@ def _poll_inputs(app: App, t: float) -> None:
     app.barometer.maybe_sample(t, reading.pressure_hpa)  # one sample every 5 minutes
     forced = app.scenario.values.get("pressure_trend") if app.scenario else ""
     trend = forced if forced in ("worsening", "steady", "improving") else app.barometer.trend()
-    app.state.update(pressure_trend=trend)
+    app.state.update(pressure_trend=trend, forced_event=str(app.scenario.values.get("event", "")) if app.scenario else "")
 
 
 def run(
@@ -273,6 +217,7 @@ def run(
     # Raw bytes of the last frame pushed to the display; None forces the next push. A fresh run()
     # starts with None, so the first frame (and any restart after re-initialising) always goes out.
     last_pushed: bytes | None = None
+    last_logged: tuple[Any, Any] | None = None
     skipped = 0  # composed but identical to the last push, so not sent; reset every report
     while not should_stop() and (max_frames is None or frames < max_frames):
         t0 = app.clock.monotonic()
@@ -297,6 +242,9 @@ def run(
         )
         pct = app.brightness.update(t0, lux, snap.motion, factor=presence.factor, cap_pct=presence.cap_pct)
         app.state.update(presence=presence)  # kept in the shared state for the status page
+        if (presence.state, snap.motion) != last_logged:
+            log.info("presence %s, motion %s, brightness %s%%", presence.state.name.lower(), snap.motion, pct)
+            last_logged = (presence.state, snap.motion)
         snap = replace(snap, presence=presence)
         if t0 >= next_status:
             app.status = _status(app, snap, presence, last_demo)

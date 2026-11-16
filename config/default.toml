@@ -10,7 +10,7 @@ max_brightness_pct = 100   # the panel's ceiling: the app works in 0..100 relati
 show_refresh_rate = false  # the library prints this to stdout; leave off in the service
 
 [sensors]
-backend = "sim"           # sim | sysfs
+backend = "sim"           # sim | sysfs | none | "pkg.module:factory" (your own)
 poll_interval_s = 1.0
 # Kernel driver files (sysfs). Any unreadable file just means "no reading".
 illuminance_path = "/sys/bus/i2c/devices/1-0010/illuminance"   # true lux
@@ -20,13 +20,13 @@ humidity_path = "/sys/bus/i2c/devices/1-0038/humidity"
 pressure_path = "/sys/bus/i2c/devices/1-0077/pressure"         # hPa
 
 [motion]
-backend = "sim"           # sim | gpio
+backend = "sim"           # sim | gpio | none | "pkg.module:factory"
 chip = "gpiochip0"
 line = 16
 poll_hz = 5               # the PIR level is read this often (levels, not edges)
 
 [weather]
-backend = "sim"           # sim | openmeteo
+backend = "sim"           # sim | openmeteo | none | "pkg.module:factory"
 # For the openmeteo backend, put latitude and longitude in config/local.toml (not committed):
 # the coordinates leave the house, so they are rounded to two decimals in the request.
 poll_interval_s = 900
@@ -74,6 +74,24 @@ quiet_start = "23:30"
 quiet_end = "06:30"
 quiet_cap_pct = 20
 quiet_empty_after_s = 30
+
+[events]
+# Rare extras (a bird, a shooting star, a coin to pick up, sparkles at the hour) and dated looks.
+enabled = true
+rate = 1.0                # random events: 1 is a few per hour, 0 turns them off (dated looks stay)
+birthdays = []            # ["03-14"]: a cake rolls past all day. Put real dates only in config/local.toml.
+
+[[events.dated]]          # style: lights | pumpkins | cake. Ranges are inclusive and may wrap the new year.
+name = "christmas"
+from = "12-01"
+to = "12-26"
+style = "lights"
+
+[[events.dated]]
+name = "halloween"
+from = "10-25"
+to = "10-31"
+style = "pumpkins"
 
 [hud]
 indoor = true             # indoor temperature, top-left
