@@ -123,14 +123,14 @@ To review every condition and biome at once:
 
 ## Demo mode
 
-A scripted tour of the features, about 10 minutes, looping until you stop it (Ctrl-C):
+A scripted tour of the features, about 13 minutes, looping until you stop it (Ctrl-C):
 
     .venv/Scripts/python -m pixelwalk --profile dev --demo        # then open http://localhost:8888
 
 It covers the clock bump and the hour change, dawn, dusk and night with the moon, two time-lapses,
 every weather condition, the snow, grass, desert, city and castle biomes through the pipe, the cave in a dim room, the castle hall and a spaceship, the barometer, and the
 brightness range ending in fully off and back on, the sleep-and-wake sequence, the robot's
-moods and every event and date special. Each step's label is printed to the log.
+moods and every event and date special, and a few of the moments. Each step's label is printed to the log.
 On the Pi (profile `pi-check`, see `deploy/README.md`) it runs on the real panel.
 
 The script is `scenarios/demo.toml`: a `[[sim.timeline]]` list of steps, each firing at `at`
@@ -190,6 +190,31 @@ rolls past on every date in `events.birthdays`: put real dates only in `config/l
 is not committed. `events.enabled` switches all of it off, `events.rate` scales how often random
 events happen (0 keeps only the dated looks); both can be changed while running. In demo mode or
 a scenario, `event = "bird"` (or `coin`, `shooting_star`, `lights`, `pumpkins`, `cake`) shows one now.
+
+## Moments: a few bigger things a day
+
+On top of the walking robot, two or three times a day something bigger happens, at random times
+between 08:00 and 22:00 while the display is on (the day's plan comes from the date, so a restart
+does not change it, and at least 30 minutes pass between two). Each one waits for a scene it fits:
+
+![Every moment](docs/img/moments.png)
+
+- **Cameos**, something that lives in the biome passes by: a tram in the city, a deer on the
+  grass, a reindeer in the snow, a camel in the desert, a knight on horseback at the castle, bats in
+  the cave, a droid on the spaceship, a ghost in the hall.
+- **Sky visitors** (outdoors, in fair weather): a UFO, a hot-air balloon, a plane with a contrail,
+  a meteor shower at night, a rainbow in drizzle.
+- **Stories**, where the robot is part of it: it finds a treasure chest and opens it, meets the other
+  character (they hop together and the friend walks on), or stops to dance.
+- **Scenery changes**: an aurora over the snow, fireworks over the city, a sandstorm in the desert,
+  lightning through the hall's windows, glow-worms in the cave, a red alert on the spaceship.
+
+A pipe trip or a nap interrupts a moment (its time is kept for later), and no random event starts
+while one plays. `[moments]` in the config has `enabled` and `per_day` (2.5 is two or three; 0 turns
+them off); both can be changed while running (control page, "Extras"). In demo mode or a scenario,
+`event = "chest"` (any moment name) shows one now. To review all of them:
+
+    .venv/Scripts/python -m pixelwalk.tools.contact_sheet --moments --out out/moments.png
 
 ## Using other hardware
 

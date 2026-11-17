@@ -143,7 +143,7 @@ def test_shipped_demo_script_is_valid_and_covers_the_features():
                  "thunder", "fog", "barometer", "snow", "pipe", "desert", "hour change", "dim", "lights out", "lights on",
                  "leaves", "campfire", "asleep", "switches itself off", "walks in"):
         assert word in labels, word
-    assert 300 <= demo.length <= 600 and demo.loop  # minutes long, and it repeats
+    assert 300 <= demo.length <= 800 and demo.loop  # minutes long, and it repeats
     conditions = {st.values.get("weather") for st in demo.steps}
     assert {"CLEAR", "PARTLY_CLOUDY", "OVERCAST", "DRIZZLE", "RAIN", "HEAVY_RAIN", "THUNDER", "FOG", "SNOW"} <= conditions
     assert all(st.at < demo.length for st in demo.steps)
@@ -211,6 +211,7 @@ def test_whole_demo_runs_headless_and_every_scene_happens(tmp_path, caplog):
     app.display = disp
 
     biomes_seen = []
+    moments_seen = set()
     presence_seen = []
     caplog.set_level(logging.INFO, logger="pixelwalk")
 
@@ -221,6 +222,8 @@ def test_whole_demo_runs_headless_and_every_scene_happens(tmp_path, caplog):
         run(app, max_frames=10, sleep=ft.sleep)
         n += 10
         biomes_seen.append(app.renderer.biome)
+        if app.renderer.moments.active is not None:
+            moments_seen.add(app.renderer.moments.active.name)
         if app.state.snapshot().presence is not None:
             presence_seen.append(app.state.snapshot().presence.state)
     labels = [r.getMessage() for r in caplog.records if r.getMessage().startswith("demo: ")]
@@ -231,6 +234,7 @@ def test_whole_demo_runs_headless_and_every_scene_happens(tmp_path, caplog):
     assert biomes_seen[0] is Biome.CITY  # the tour starts mild, in the city
     assert {Biome.SNOW, Biome.GRASS, Biome.DESERT, Biome.CAVE} <= set(biomes_seen)
     assert {Biome.CASTLE, Biome.HALL, Biome.SHIP} <= set(biomes_seen)  # the castle, its hall, the spaceship
+    assert {"chest", "friend", "dance", "ufo", "bus", "fireworks", "aurora"} <= moments_seen  # shown on cue
     assert biomes_seen.index(Biome.SNOW) < biomes_seen.index(Biome.GRASS) < biomes_seen.index(Biome.DESERT)
     assert biomes_seen.index(Biome.CAVE) > biomes_seen.index(Biome.DESERT)  # the dim evening comes last
     order = [s for i, s in enumerate(presence_seen) if i == 0 or s != presence_seen[i - 1]]

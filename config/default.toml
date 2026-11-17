@@ -80,6 +80,13 @@ quiet_end = "06:30"
 quiet_cap_pct = 20
 quiet_empty_after_s = 30
 
+[moments]
+# Rare, bigger things on top of the walking hero: a deer or a tram crossing, a UFO, the robot finding a
+# chest or meeting a friend, an aurora or fireworks. A day gets a plan of a few times (random, but the
+# same after a restart) between 08:00 and 22:00; each one waits for a scene it fits.
+enabled = true
+per_day = 2.5               # on average: two or three a day. 0 turns them off
+
 [events]
 # Rare extras (a bird, a shooting star, a coin to pick up, sparkles at the hour) and dated looks.
 enabled = true

@@ -1,4 +1,4 @@
-# Demo mode: a scripted tour of the features, about 10 minutes, looping.
+# Demo mode: a scripted tour of the features, about 13 minutes, looping.
 #
 #   .venv/Scripts/python -m pixelwalk --profile dev --demo            (PC, http://localhost:8888)
 #   sudo env PYTHONPATH=src ~/led-venv/bin/python -m pixelwalk --profile pi-check --demo   (Pi)
@@ -20,7 +20,7 @@ wind_kmh = 5
 gust_kmh = 10
 
 [demo]
-length = 600
+length = 778
 loop = true
 
 # --- the clock and the time of day ---------------------------------------------------------
@@ -253,3 +253,54 @@ event = "cake"
 at = 584
 label = "The hour changes: both blocks bump and sparkle"
 time = "2026-07-02 12:59:48"
+
+# --- moments: the rare things that happen a few times a day (here shown on cue) -------------
+
+[[sim.timeline]]
+at = 600
+label = "Moment, a story: a treasure chest comes up the road; the robot opens it and cheers"
+time = "2026-07-02 12:00:00"
+event = "chest"
+
+[[sim.timeline]]
+at = 628
+label = "Moment, a story: the other character walks up; they hop together, and it walks on"
+time = "2026-07-02 12:00:00"
+event = "friend"
+
+[[sim.timeline]]
+at = 644
+label = "Moment, a story: the robot stops to dance"
+time = "2026-07-02 12:00:00"
+event = "dance"
+
+[[sim.timeline]]
+at = 658
+label = "Moment, a sky visitor: a UFO drifts by"
+time = "2026-07-02 12:00:00"
+event = "ufo"
+
+[[sim.timeline]]
+at = 682
+label = "Moment, a cameo: a tram on the city road"
+time = "2026-07-02 12:00:00"
+event = "bus"
+
+[[sim.timeline]]
+at = 700
+label = "Moment, scenery: fireworks over the city"
+time = "2026-07-02 22:30:00"
+event = "fireworks"
+
+[[sim.timeline]]
+at = 726
+label = "Night in the snow (a pipe)"
+time = "2026-07-02 23:00:00"
+outdoor_c = -4
+
+[[sim.timeline]]
+at = 738
+label = "Moment, scenery: an aurora over the snowfield"
+time = "2026-07-02 23:00:00"
+outdoor_c = -4
+event = "aurora"

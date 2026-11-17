@@ -78,6 +78,9 @@ def apply_demo_config(cfg: dict[str, Any]) -> dict[str, Any]:
     b = cfg["brightness"]
     if b.get("off_below_lux", 0) <= 0:
         b.update(off_below_lux=5.0, on_above_lux=12.0, off_delay_s=2.0, on_delay_s=1.5)
+    mo = cfg.setdefault("moments", {})
+    if mo.get("per_day", 2.5) == 2.5:  # still the default: the script shows the moments on cue
+        mo["per_day"] = 0.0
     pr = cfg["presence"]
     if pr.get("idle_after_s") == 300 and pr.get("dark_after_s") == 900:  # still the defaults: shorten
         pr.update(idle_after_s=10.0, dark_after_s=45.0)
@@ -128,6 +131,7 @@ def build_app(
         cold_c=cfg["hero"]["cold_c"],
         hot_c=cfg["hero"]["hot_c"],
         events=cfg.get("events"),
+        moments=cfg.get("moments"),
         character=cfg["hero"]["character"],
         biome=cfg["world"]["biome"],
     )

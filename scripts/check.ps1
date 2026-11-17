@@ -44,9 +44,11 @@ if (-not $DemoOnly) {
     Step "night at 10%"   { & $py -m pixelwalk.tools.led_preview --at "2026-07-01 23:00" --out out\led }
     Step "contact sheet"  { & $py -m pixelwalk.tools.contact_sheet --scale 3 --out out\contact.png }
     Step "weather sheet"  { & $py -m pixelwalk.tools.contact_sheet --weather --scale 3 --out out\weather.png }
+    Step "moments sheet"  { & $py -m pixelwalk.tools.contact_sheet --moments --scale 3 --out out\moments.png }
     Write-Host "All checks passed." -ForegroundColor Green
     Write-Host "Art previews: assets\build\preview_*.png"
     Write-Host "Scenes: out\contact.png (every time of day and the 8 moon phases)"
+    Write-Host "Moments: out\moments.png (every cameo, visitor, story and scenery change)"
     Write-Host "Weather: out\weather.png (every condition, the biomes, the cave, wind, barometer)"
     Write-Host "24 h GIF: .venv\Scripts\python -m pixelwalk.tools.frame_dump --speed 1440 --seconds 60 --out out\day.gif"
 }

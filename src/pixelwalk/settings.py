@@ -89,6 +89,10 @@ PARAMS: list[Param] = [
           hint="Birds, shooting stars, coins, the hour burst, and the dated looks."),
     Param("events.rate", "float", "Extras", "Random event frequency (x)", 0, 10, 0.1,
           "1 is about a few an hour; 0 turns random events off but keeps the dated looks."),
+    Param("moments.enabled", "bool", "Extras", "Rare moments",
+          hint="Cameos, sky visitors, stories and scenery changes, a few times a day."),
+    Param("moments.per_day", "float", "Extras", "Moments per day (average)", 0, 8, 0.5,
+          "2.5 is two or three a day, at random times between 08:00 and 22:00 while the display is on."),
     Param("clock.hour24", "bool", "Clock", "24-hour clock"),
     Param("hero.character", "choice", "Look", "Character",
           hint="Who walks through the world. Any complete character in assets/src is listed."),
@@ -280,6 +284,9 @@ def apply_settings(app: Any, values: dict[str, Any]) -> None:
     r.cold_c, r.hot_c = values["hero.cold_c"], values["hero.hot_c"]
     r.clockface.hour24 = values["clock.hour24"]
     r.events.enabled, r.events.rate = values["events.enabled"], values["events.rate"]
+    if (r.moments.enabled, r.moments.per_day) != (values["moments.enabled"], values["moments.per_day"]):
+        r.moments.enabled, r.moments.per_day = values["moments.enabled"], values["moments.per_day"]
+        r.moments.replan()
     r.selector.min_stay_s = values["director.min_stay_s"]
     for apply, key in ((r.set_character, "hero.character"), (r.set_biome, "world.biome")):
         try:

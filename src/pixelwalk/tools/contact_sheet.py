@@ -111,15 +111,62 @@ def weather_sheet(date: str = "2026-07-01", scale: int = 4, cols: int = 5) -> Im
     return sheet
 
 
+# name -> (temp C, condition, hour, kwargs for the room, seconds into the moment to capture)
+MOMENT_SCENES: dict[str, tuple] = {
+    "bus": (18.0, "CLEAR", 12, {}, 7.0), "deer": (5.0, "CLEAR", 12, {}, 12.0),
+    "reindeer": (-5.0, "CLEAR", 12, {}, 12.0), "camel": (35.0, "CLEAR", 12, {}, 14.0),
+    "knight": (15.0, "OVERCAST", 12, {}, 9.0), "bats": (15.0, "CLEAR", 12, {"lux": 8.0}, 5.0),
+    "droid": (15.0, "CLEAR", 12, {"indoor": 29.0}, 11.0), "ghost": (15.0, "OVERCAST", 23, {}, 10.0),
+    "ufo": (5.0, "CLEAR", 12, {}, 10.0), "balloon": (18.0, "CLEAR", 12, {}, 25.0),
+    "plane": (18.0, "CLEAR", 12, {}, 6.0), "meteors": (5.0, "CLEAR", 23, {}, 10.5),
+    "rainbow": (18.0, "PARTLY_CLOUDY", 12, {}, 20.0), "chest": (18.0, "CLEAR", 12, {}, 6.8),
+    "friend": (18.0, "CLEAR", 12, {}, 3.4), "dance": (18.0, "CLEAR", 12, {}, 2.1),
+    "aurora": (-5.0, "CLEAR", 23, {}, 20.0), "fireworks": (18.0, "CLEAR", 23, {}, 1.3),
+    "sandstorm": (35.0, "CLEAR", 12, {}, 8.0), "hall_storm": (15.0, "OVERCAST", 23, {}, 0.9),
+    "cave_glow": (15.0, "CLEAR", 12, {"lux": 8.0}, 10.0), "red_alert": (15.0, "CLEAR", 12, {"indoor": 29.0}, 4.0),
+}
+
+
+def moments_sheet(scale: int = 3, cols: int = 6, fps: int = 15) -> Image.Image:
+    """Every moment, played in a scene it fits, captured at its best second (spec 7.12)."""
+    from ..ports import Condition, SensorReading
+
+    assets = load_assets(Path("assets/src"))
+    day = datetime.strptime("2026-07-01", "%Y-%m-%d").astimezone()
+    size, label_h = 64 * scale, 12
+    rows = -(-len(MOMENT_SCENES) // cols)
+    sheet = Image.new("RGB", (cols * (size + 4) + 4, rows * (size + label_h + 4) + 4), (30, 30, 30))
+    d = ImageDraw.Draw(sheet)
+    for i, (name, (temp, cond, hour, room, at_s)) in enumerate(MOMENT_SCENES.items()):
+        when = day.replace(hour=hour)
+        sensors = None
+        if room:
+            sensors = SensorReading(room.get("lux", 250.0), room.get("indoor", 21.0), 45.0, 1012.0, when)
+        snap = WorldSnapshot(weather=make_weather(Condition[cond], temp, when), sensors=sensors, forced_event=name)
+        r = Renderer(Path("."), assets=assets, seed=1, moments={"enabled": True, "per_day": 0})
+        frame = None
+        for k in range(int(at_s * fps) + 1):
+            t = k / fps
+            frame = r.render(snap, t, when + timedelta(seconds=t))
+        x, y = 4 + (i % cols) * (size + 4), 4 + (i // cols) * (size + label_h + 4)
+        sheet.paste(frame.resize((size, size), Image.NEAREST), (x, y + label_h))
+        d.text((x, y), f"{name} ({r.biome.value})", fill=(255, 255, 255))
+    return sheet
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--out", type=Path, default=Path("out/contact.png"))
     p.add_argument("--scale", type=int, default=4)
     p.add_argument("--date", default="2026-07-01")
     p.add_argument("--weather", action="store_true", help="weather conditions and biomes instead of times of day")
+    p.add_argument("--moments", action="store_true", help="every moment (cameos, visitors, stories, scenery)")
     args = p.parse_args(argv)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    sheet = weather_sheet(args.date, args.scale) if args.weather else contact_sheet(args.date, args.scale)
+    if args.moments:
+        sheet = moments_sheet(args.scale)
+    else:
+        sheet = weather_sheet(args.date, args.scale) if args.weather else contact_sheet(args.date, args.scale)
     sheet.save(args.out)
     print(f"wrote {args.out}")
     return 0

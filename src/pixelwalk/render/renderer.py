@@ -38,6 +38,7 @@ from ..logic.events import (
     parse_events_config,
 )
 from ..logic.hero import Hero
+from ..logic.moments import DEFAULT_PER_DAY, MOMENT_NAMES, MomentContext, MomentScheduler
 from ..logic.presence import PresenceState
 from ..logic.transition import Transition
 from ..state import WorldSnapshot
@@ -45,6 +46,8 @@ from .assets import Assets, load_assets
 from .characters import DEFAULT_CHARACTER, POSES, available, problems, sprite_name
 from .events import Sparkles, bird_position, draw_lights, draw_props, draw_shooting_star
 from .hud import Hud, format_date, format_temp
+from .moments import Context as MomentCtx
+from .moments import MomentPlayer, Sprites
 from .particles import Clouds, Lightning, Rain, Snow, Wind
 from .phases import phase_palette, remap_image
 from .world import BIOMES, FADE_STEPS, World
@@ -131,6 +134,7 @@ class Renderer:
         events: dict | None = None,
         character: str = DEFAULT_CHARACTER,
         biome: str = "auto",
+        moments: dict | None = None,
     ) -> None:
         self.width, self.height = width, height
         self.assets = assets or load_assets(assets_dir)
@@ -188,6 +192,15 @@ class Renderer:
         self.snow = Snow(random.Random(seed + 4), width)
         self.wind = Wind(random.Random(seed + 5), width)
         self.lightning = Lightning(random.Random(seed + 6))
+        mc = moments or {}
+        self.moments = MomentScheduler(seed + 11, mc.get("enabled", False), mc.get("per_day", DEFAULT_PER_DAY))
+        self._friend_cache: dict[tuple, dict] = {}
+        self._can_have_friend = len(available(self.assets)) > 1  # another complete character exists
+        self._moment_hero = False  # a story has the hero: the clock does not call it away for a bump
+        self._moment_forced = ""
+        self.moment_player = MomentPlayer(
+            MomentCtx(Sprites(self.assets, actor), width, height, self._pal, self.sparkles, self._wash, self._friend_frames)
+        )
 
         self._img = Image.new("RGB", (width, height))  # one working image, reused every frame
         self._draw = ImageDraw.Draw(self._img)
@@ -219,20 +232,39 @@ class Renderer:
                 raise ValueError(
                     f"character {name!r} is not usable ({'; '.join(bad)}); available: {', '.join(self.characters())}"
                 )
-            master = self.assets.palette
-            shared = (
-                "umbrella", "scarf", "sleep_z", "campfire", "sweat", "bird", "coin", "pumpkin", "cake",
-            )
-            per_phase = {}
-            for p in Phase:
-                tint = {pose: sprite_name(name, pose) for pose in POSES} | {n: n for n in shared}
-                per_phase[p] = {
-                    key: [remap_image(f, master, self._actor[p]) for f in self.assets[src].frames]
-                    for key, src in tint.items()
-                }
-            self._hero_cache[name] = per_phase
+            self._hero_cache[name] = self._tint_character(name)
         self._sprites = self._hero_cache[name]
         self.character = name
+
+    def _tint_character(self, name: str) -> dict:
+        """A character's sprites (and the shared accessories) tinted for every time of day."""
+        master = self.assets.palette
+        shared = ("umbrella", "scarf", "sleep_z", "campfire", "sweat", "bird", "coin", "pumpkin", "cake")
+        per_phase = {}
+        for p in Phase:
+            tint = {pose: sprite_name(name, pose) for pose in POSES} | {n: n for n in shared}
+            per_phase[p] = {
+                key: [remap_image(f, master, self._actor[p]) for f in self.assets[src].frames]
+                for key, src in tint.items()
+            }
+        return per_phase
+
+    def _others(self) -> list[str]:
+        """The complete characters other than the hero: who can stop to say hello."""
+        return [c for c in self.characters() if c != self.character]
+
+    def _friend_frames(self, phase: Phase) -> dict | None:
+        """The first other character's walk, idle and jump frames, tinted and turned to face left."""
+        others = self._others()
+        if not others:
+            return None
+        key = (others[0], phase)
+        if key not in self._friend_cache:
+            if others[0] not in self._hero_cache:
+                self._hero_cache[others[0]] = self._tint_character(others[0])
+            src = self._hero_cache[others[0]][phase]
+            self._friend_cache[key] = {pose: [ImageOps.mirror(f) for f in src[pose]] for pose in ("walk", "idle", "jump")}
+        return self._friend_cache[key]
 
     def biomes(self) -> list[str]:
         return [b.value for b in Biome]
@@ -335,11 +367,13 @@ class Renderer:
 
         # Clock and hero.
         prev_shown = self.clockface.shown
-        view = self.clockface.update(now, t, hero_available=not (tv and tv.busy) and active)
+        view = self.clockface.update(now, t, hero_available=not (tv and tv.busy) and active and not self._moment_hero)
         shown = self.clockface.shown
         if self.events.enabled and prev_shown and shown and shown[0] != prev_shown[0]:
             for key in ("hh", "mm"):  # the hour change: a short burst over both blocks
                 self.sparkles.burst(BLOCK_X[key] + 9, BLOCK_Y + 2, 10)
+        moment_hero = self._moment_step(snap, t, dt, now, hero_phase, tv is not None or not active)
+        self._moment_hero = moment_hero is not None
         override = tv.hero if (tv and tv.hero) else None
         sleeping = False
         if override is None and pv is not None and not active:
@@ -350,8 +384,13 @@ class Renderer:
                 override = HeroOverride(HOME_X, GROUND_Y, "sleep" if sleeping else "sit")
         if override is None:
             override = view.hero
+        if override is None:
+            override = moment_hero
         draw = self.hero.update(t, override, force_walk=bool(tv and tv.force_walk))
-        ev = self._event(snap, t, now, hero_phase, allowed=active and tv is None and not self.clockface.bumping)
+        ev = self._event(
+            snap, t, now, hero_phase,
+            allowed=active and tv is None and not self.clockface.bumping and not self.moment_player.active,
+        )
 
         # Weather effects.
         target = effect_target(
@@ -380,8 +419,10 @@ class Renderer:
                 img.paste(cimg, (round(c.x), c.y), cimg)
             if ev is not None and ev.name == "shooting_star" and lv.clear >= 0.5:
                 draw_shooting_star(self._draw, ev.progress(t), ev.seed, self._pal[hero_phase])
+        self.moment_player.sky(img, t, hero_phase)
         far_visibility = 1.0 - min(1.0, lv.fog / 0.6)
         self.world.draw_strips(img, self.hero.world_x, self.biome, blend, far_visibility)
+        self.moment_player.world(img, t, self.hero.world_x, hero_phase)
 
         sprites = self._sprites[hero_phase]
         self._event_scenery(img, sprites, ev, t, dt, draw)
@@ -404,6 +445,7 @@ class Renderer:
             pipe = self._pipes[hero_phase][tv.pipe_biome]
             img.paste(pipe, (tv.pipe_x, PIPE_Y), pipe)
 
+        self.moment_player.front(img, t, self.hero.world_x, hero_phase)
         if not shelter:
             self._particles(img, hero_phase, target.slant)
         fog_colour = _mix(FOG_WASH[blend.a], FOG_WASH[blend.b], blend.t)
@@ -429,6 +471,38 @@ class Renderer:
             if box[2] > box[0]:
                 img.paste((0, 0, 0), box)
         return img
+
+    def _moment_step(
+        self, snap: WorldSnapshot, t: float, dt: float, now: datetime, phase: Phase, resting: bool
+    ) -> HeroOverride | None:
+        """Start, run and end the day's rare moments; returns what the hero must do, if a story has it.
+        `resting` is a pipe trip or a nap: those interrupt a moment (its planned time is kept)."""
+        player, sched = self.moment_player, self.moments
+        if player.active and resting:
+            player.clear()
+            sched.cancel(t)
+            return None
+        forced = snap.forced_event
+        if forced != self._moment_forced:
+            self._moment_forced = forced
+            if forced in MOMENT_NAMES and sched.enabled:
+                player.clear()
+                sched.trigger(forced, t)
+        weather = snap.weather
+        ctx = MomentContext(
+            self.biome, phase, weather.condition if weather else None, self.hero.walking,
+            BIOMES[self.biome].sheltered, self._can_have_friend,
+        )
+        allowed = not resting and not self.clockface.bumping and self.events.active is None
+        am = sched.update(now, t, allowed, ctx)
+        if am is not None and not player.active:
+            player.begin(am, self.hero.world_x)
+        hero = player.step(t, dt, self.hero.world_x) if player.active else None
+        if player.done:
+            player.clear()
+            sched.finish(t)
+            hero = None
+        return hero
 
     def _event(self, snap: WorldSnapshot, t: float, now: datetime, phase: Phase, allowed: bool):
         """The random event playing now (or None), and which dated styles are on today."""

@@ -590,6 +590,37 @@ Events are data-driven: a name, a condition, a probability per hour, and an anim
 Built (phase 7): shooting star, bird, coin and the hour burst; dated looks `lights`, `pumpkins`,
 `cake` from `[events]` (see the README).
 
+### 7.12 Moments
+
+Events (7.10) are small and frequent. Moments are rare and bigger, two or three a day, and come
+in four kinds:
+
+| Kind | What | Examples |
+|---|---|---|
+| cameo | something that lives in the biome crosses the screen | tram (city), deer (grass), reindeer (snow), camel (desert), knight on horseback (castle), bats (cave), droid (ship), ghost (hall) |
+| sky | an outdoor visitor, in fair weather | UFO, hot-air balloon, plane with a contrail, meteor shower (night), rainbow (drizzle or part cloud) |
+| story | the hero takes part | finds a treasure chest and opens it, meets the other character and they hop together, dances |
+| scenery | the place changes for a minute | aurora (snow, night), fireworks (city, dusk or night), sandstorm (desert), lightning in the hall's windows, cave glow-worms, red alert (ship) |
+
+- **Plan.** Each day has a plan of times (an average of 2.5: two or three) between 08:00 and 22:00,
+  at least 90 minutes apart, drawn from the date and a seed, so a restart does not change it. After a
+  restart, times more than two hours old are skipped rather than all fired at once.
+- **Start.** At a planned time a moment starts as soon as the scene allows it (no pipe trip, no clock
+  bump, no resting, no random event) and one fits it: each moment names the biomes, times of day and
+  weather it needs, and whether the hero must be walking. A scene nothing fits keeps the time
+  pending. The same moment is not chosen twice in a row, and the same kind less often.
+- **One at a time**, with a 30 minute gap after each. A pipe trip or a nap cancels it and keeps its
+  planned time. Random events do not start while one plays.
+- **Stories** take the hero over through the same override as the clock bump and the campfire; the
+  clock waits (the digits still change) rather than calling the hero away. The friend is the first
+  other complete character in `assets/src`.
+- **Drawing** is in three places: sky (before the strips), world (after the strips, before the hero)
+  and front (after the hero). Sprites are in `assets/src/moments.txt`, drawn facing right, tinted per
+  time of day and mirrored once at start-up. Scenery changes are drawn from parameters.
+- `[moments]` has `enabled` and `per_day`; a scenario or the demo can show one with `event = "<name>"`.
+
+Built: 22 moments (`logic/moments.py`, `render/moments.py`).
+
 ### 7.11 Biome transition
 
 1. A pipe or door scrolls in from the right.
