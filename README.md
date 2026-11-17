@@ -1,7 +1,8 @@
 # Pixelwalk
 
 Side-scrolling platformer clock for a 64x64 RGB LED panel on a Raspberry Pi. A pixel-art hero walks
-through a world that follows the time of day, the weather and (optionally) the room. It runs on
+through a world that follows the time of day, the weather and (optionally) the room, and two or three
+times a day something bigger happens (a tram passes, a UFO drifts by, the hero finds a chest). It runs on
 your PC first, in a browser, so you can try everything without a panel.
 Design notes: [docs/spec.md](docs/spec.md) (historical; this README is the current reference).
 
@@ -9,7 +10,7 @@ Design notes: [docs/spec.md](docs/spec.md) (historical; this README is the curre
 
 ![Weather conditions and the biomes](docs/img/weather.png)
 
-*Rendered by `pixelwalk.tools.contact_sheet` (`--weather` for the second sheet).*
+*Rendered by `pixelwalk.tools.contact_sheet` (`--weather` for the second sheet, `--moments` for the third).*
 
 ## What you need
 
@@ -26,8 +27,9 @@ Design notes: [docs/spec.md](docs/spec.md) (historical; this README is the curre
 
 **Optional** (each one switched off with `backend = "none"`; the app then does without)
 
-- a **light sensor** (brightness follows the room; without it brightness is fixed),
-- an **indoor temperature / pressure sensor** (top-left temperature, barometer-driven clouds),
+- a **light sensor** (brightness follows the room, and a dim room is a cave; without it brightness is fixed),
+- an **indoor temperature / pressure sensor** (top-left temperature, barometer-driven clouds, and a hot
+  room is a spaceship),
 - a **PIR motion sensor** (the hero sleeps and the panel goes dark when nobody is around),
 - **weather** from Open-Meteo (needs your coordinates and a network).
 
@@ -103,6 +105,23 @@ is down the robot goes inside, to the castle hall. The city lights up its window
 lamps from dusk. A change walks the robot through a pipe. The dev profile keeps a
 biome for at least 15 s (10 minutes on the Pi) so you can see it react.
 
+The rules apply in this order, so the room wins over the weather:
+
+| Biome | Chosen when | Looks like |
+|---|---|---|
+| CAVE | indoor light under 20 lux (leaves above 40) | rock wall, stalactites, glowing crystals, mushrooms |
+| SHIP | indoor temperature above 27 C (leaves below 25) | hull plating, viewports on to space, consoles, cryo pods |
+| SNOW | outdoor 0 C or below, or snowing | snowfield, pines, peaks |
+| DESERT | outdoor 28 C or above | dunes, cacti |
+| CASTLE | OVERCAST or FOG, or gusts of 30 km/h or more (leaves below 22), by day | castles on hills, a village with a wall, banners, oaks |
+| HALL | the same weather, once the sun is down | stone hall, arched windows, tapestries, braziers |
+| CITY | outdoor 10 to 24 C | shopfronts, street lamps, a skyline; windows light up from dusk |
+| GRASS | everything else (0 to 10 C, 24 to 28 C) | green hills and bushes |
+
+The cave, the hall and the spaceship are indoors: they have a wall instead of a sky and show no sun,
+moon, clouds or weather. Without a light sensor there is no cave, and without an indoor temperature
+there is no spaceship. Unknown weather keeps the current biome.
+
 To use the real forecast (Open-Meteo, no API key for non-commercial use), put your coordinates in
 `config/local.toml`, which is not committed. They are rounded to two decimals in the request and
 never written to the cache file:
@@ -169,7 +188,9 @@ Both are choices, not code. In `config/local.toml`:
 With `control.enabled = true` the same two choices are in the control page's "Look" group and apply
 live (a pinned biome plays the pipe trip). A character is five sprites named `<name>_walk`, `_idle`,
 `_jump`, `_sit` and `_wake`; `python -m pixelwalk.tools.build_assets` says what a new one is missing.
-The `new-character-or-theme` skill (`.claude/skills`) walks through drawing one.
+A second complete character is also the friend who stops by in one of the moments (see below).
+The `new-character-or-theme` skill (`.claude/skills`) walks through drawing a character, a biome or a
+moment.
 
 ## Moods, events and date specials
 
