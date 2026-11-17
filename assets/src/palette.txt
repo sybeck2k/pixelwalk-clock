@@ -41,3 +41,8 @@ x window         #9ad8f0
 X window_dk      #4a6a98
 o rock           #6e6890
 O rock_dk        #3e3a5a
+f stone_warm     #b5aa9a
+F stone_warm_dk  #857a6c
+P panel          #27324a
+Q panel_lt       #5a7094
+q space          #080a1c

@@ -114,3 +114,63 @@ OOOOOOoO
 OOoOOOOO
 OOOOOOOO
 kkkkkkkk
+
+sprite ground_castle 8x8
+frame a
+gggGgggg
+GGGGGGGG
+ffffDfff
+ffffDfff
+DDDDDDDD
+fDffffff
+fDffffff
+DDDDDDDD
+frame b
+ggggggGg
+GGGGGGGG
+fffDffff
+fffDffff
+DDDDDDDD
+ffffffDf
+ffffffDf
+DDDDDDDD
+
+sprite ground_hall 8x8
+frame a
+ffffffff
+FFFFFFDF
+FFFFFFDF
+DDDDDDDD
+FFDFFFFF
+FFDFFFFF
+FFDFFFFF
+DDDDDDDD
+frame b
+ffffffff
+FFDFFFFF
+FFDFFFFF
+DDDDDDDD
+FFFFFFDF
+FFFFFFDF
+FFFFFFDF
+DDDDDDDD
+
+sprite ground_ship 8x8
+frame a
+QQQQQQQQ
+AAAAAAAA
+AaAAAaAA
+AAAAAAAA
+AAAAAAAA
+AaAAAaAA
+AAAAAAAA
+PPPPPPPP
+frame b
+QQQQQQQQ
+AAAAAAAA
+AAaAAAaA
+AAAAAAAA
+AAAAAAAA
+AAaAAAaA
+AAAAAAAA
+PPPPPPPP

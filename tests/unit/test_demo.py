@@ -230,6 +230,7 @@ def test_whole_demo_runs_headless_and_every_scene_happens(tmp_path, caplog):
     assert len(labels) > n_steps and labels[n_steps].startswith("demo: Noon")  # then it loops
     assert biomes_seen[0] is Biome.CITY  # the tour starts mild, in the city
     assert {Biome.SNOW, Biome.GRASS, Biome.DESERT, Biome.CAVE} <= set(biomes_seen)
+    assert {Biome.CASTLE, Biome.HALL, Biome.SHIP} <= set(biomes_seen)  # the castle, its hall, the spaceship
     assert biomes_seen.index(Biome.SNOW) < biomes_seen.index(Biome.GRASS) < biomes_seen.index(Biome.DESERT)
     assert biomes_seen.index(Biome.CAVE) > biomes_seen.index(Biome.DESERT)  # the dim evening comes last
     order = [s for i, s in enumerate(presence_seen) if i == 0 or s != presence_seen[i - 1]]

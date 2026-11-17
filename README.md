@@ -97,8 +97,10 @@ THUNDER), `outdoor_c`, `gust_kmh`, `lux` and `pressure_hpa` while the demo runs.
 follows the outdoor temperature (snowfield at or below 0 C or while snowing, desert at or above
 28 C, the city between 10 and 24 C, grassland in between, with 2 C of hysteresis); a dim room
 (indoor light under 20 lux, if you have the light sensor) wins over all of that and sends the
-robot into a cave, with no sky or weather. The city lights up its windows and street lamps from
-dusk. A change walks the robot through a pipe. The dev profile keeps a
+robot into a cave, with no sky or weather, and a hot room (indoor over 27 C) puts it aboard a
+spaceship. Overcast, fog or gusts of 30 km/h or more bring a medieval castle, and once the sun
+is down the robot goes inside, to the castle hall. The city lights up its windows and street
+lamps from dusk. A change walks the robot through a pipe. The dev profile keeps a
 biome for at least 15 s (10 minutes on the Pi) so you can see it react.
 
 To use the real forecast (Open-Meteo, no API key for non-commercial use), put your coordinates in
@@ -126,7 +128,7 @@ A scripted tour of the features, about 10 minutes, looping until you stop it (Ct
     .venv/Scripts/python -m pixelwalk --profile dev --demo        # then open http://localhost:8888
 
 It covers the clock bump and the hour change, dawn, dusk and night with the moon, two time-lapses,
-every weather condition, the snow, grass, desert and city biomes through the pipe, the cave in a dim room, the barometer, and the
+every weather condition, the snow, grass, desert, city and castle biomes through the pipe, the cave in a dim room, the castle hall and a spaceship, the barometer, and the
 brightness range ending in fully off and back on, the sleep-and-wake sequence, the robot's
 moods and every event and date special. Each step's label is printed to the log.
 On the Pi (profile `pi-check`, see `deploy/README.md`) it runs on the real panel.
@@ -162,7 +164,7 @@ Both are choices, not code. In `config/local.toml`:
     character = "robot"     # robot or cat, or any complete character in assets/src (char_<name>.txt)
 
     [world]
-    biome = "auto"          # "auto" follows the weather; or pin grass, snow, desert, city or cave
+    biome = "auto"          # "auto" follows the weather; or pin grass, snow, desert, city, cave, castle, hall or ship
 
 With `control.enabled = true` the same two choices are in the control page's "Look" group and apply
 live (a pinned biome plays the pipe trip). A character is five sprites named `<name>_walk`, `_idle`,

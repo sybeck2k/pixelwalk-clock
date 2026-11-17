@@ -17,6 +17,9 @@ class Biome(Enum):
     DESERT = "desert"
     CAVE = "cave"
     CITY = "city"
+    CASTLE = "castle"
+    HALL = "hall"
+    SHIP = "ship"
 
 
 # --- biome ------------------------------------------------------------------------------
@@ -27,6 +30,10 @@ CITY_FROM_C = 10.0  # mild weather: the city (the band widens by the hysteresis 
 CITY_TO_C = 24.0
 CAVE_BELOW_LUX = 20.0  # a dim room: the cave. Above the default dark-mode threshold, so it is seen
 CAVE_ABOVE_LUX = 40.0  # ...and left again only once the room is clearly lit
+CASTLE_GUST_KMH = 30.0  # gusty or overcast weather: the castle (the hall once the sun is down)
+CASTLE_GUST_STAY_KMH = 22.0
+SHIP_ABOVE_C = 27.0  # a hot room (the indoor sensor): the spaceship
+SHIP_BELOW_C = 25.0
 HYSTERESIS_C = 2.0
 MIN_STAY_S = 10 * 60
 
@@ -38,18 +45,36 @@ def _cave(current: Biome, lux: float | None) -> bool:
     return lux < (CAVE_ABOVE_LUX if current is Biome.CAVE else CAVE_BELOW_LUX)
 
 
+def _ship(current: Biome, indoor_c: float | None) -> bool:
+    """A hot room (the indoor temperature sensor) asks for the spaceship, with hysteresis."""
+    if indoor_c is None:
+        return False
+    return indoor_c > (SHIP_BELOW_C if current is Biome.SHIP else SHIP_ABOVE_C)
+
+
 def choose_biome(
-    current: Biome, temp_c: float | None, condition: Condition | None, lux: float | None = None
+    current: Biome,
+    temp_c: float | None,
+    condition: Condition | None,
+    lux: float | None = None,
+    *,
+    gust_kmh: float = 0.0,
+    indoor_c: float | None = None,
+    night: bool = False,
 ) -> Biome:
     """The biome the room and the weather ask for, with hysteresis around each threshold.
 
-    A dim room wins over the weather. Unknown weather (`temp_c` is None) keeps the current biome,
-    except that it leaves the cave once the room is lit again.
+    The room wins over the weather: a dim room is the cave, a hot room the spaceship. Then the
+    extremes (snow, desert), then gusty or overcast weather (the castle, or its hall after dark),
+    then mild weather (the city). Unknown weather (`temp_c` is None) keeps the current biome,
+    except that it leaves the cave and the spaceship once the room asks for nothing.
     """
     if _cave(current, lux):
         return Biome.CAVE
+    if _ship(current, indoor_c):
+        return Biome.SHIP
     if temp_c is None or condition is None:
-        return Biome.GRASS if current is Biome.CAVE else current
+        return Biome.GRASS if current in (Biome.CAVE, Biome.SHIP) else current
     if condition is Condition.SNOW or temp_c <= SNOW_AT_OR_BELOW_C:
         return Biome.SNOW
     if current is Biome.SNOW and temp_c <= SNOW_AT_OR_BELOW_C + HYSTERESIS_C:
@@ -58,6 +83,9 @@ def choose_biome(
         return Biome.DESERT
     if current is Biome.DESERT and temp_c >= DESERT_AT_OR_ABOVE_C - HYSTERESIS_C:
         return Biome.DESERT
+    gusts = CASTLE_GUST_STAY_KMH if current in (Biome.CASTLE, Biome.HALL) else CASTLE_GUST_KMH
+    if condition in (Condition.OVERCAST, Condition.FOG) or gust_kmh >= gusts:
+        return Biome.HALL if night else Biome.CASTLE
     lo, hi = CITY_FROM_C, CITY_TO_C
     if current is Biome.CITY:
         lo, hi = lo - HYSTERESIS_C, hi + HYSTERESIS_C
@@ -75,14 +103,18 @@ class BiomeSelector:
         self.forced: Biome | None = None  # a pinned biome ignores the weather and the minimum stay
         self._since = 0.0
 
-    def initialize(self, t: float, weather: Weather | None, lux: float | None = None) -> Biome:
+    def initialize(
+        self, t: float, weather: Weather | None, lux: float | None = None,
+        indoor_c: float | None = None, night: bool = False,
+    ) -> Biome:
         """First biome at start-up: picked directly, no transition, no minimum stay."""
         self.current = Biome.GRASS
+        wanted = self._wanted(Biome.GRASS, weather, lux, indoor_c, night)
         if self.forced is not None:
             self.current = self.forced
             self._since = t
-        elif weather is not None or _cave(Biome.GRASS, lux):
-            self.current = self._wanted(Biome.GRASS, weather, lux)
+        elif weather is not None or wanted is not Biome.GRASS:
+            self.current = wanted
             self._since = t
         else:
             # Started without weather: the first real reading may change the biome at once.
@@ -90,16 +122,24 @@ class BiomeSelector:
         return self.current
 
     @staticmethod
-    def _wanted(current: Biome, weather: Weather | None, lux: float | None) -> Biome:
+    def _wanted(
+        current: Biome, weather: Weather | None, lux: float | None, indoor_c: float | None, night: bool
+    ) -> Biome:
         if weather is None:
-            return choose_biome(current, None, None, lux)
-        return choose_biome(current, weather.temperature_c, weather.condition, lux)
+            return choose_biome(current, None, None, lux, indoor_c=indoor_c, night=night)
+        return choose_biome(
+            current, weather.temperature_c, weather.condition, lux,
+            gust_kmh=weather.gust_kmh, indoor_c=indoor_c, night=night,
+        )
 
-    def target(self, t: float, weather: Weather | None, lux: float | None = None) -> Biome:
+    def target(
+        self, t: float, weather: Weather | None, lux: float | None = None,
+        indoor_c: float | None = None, night: bool = False,
+    ) -> Biome:
         assert self.current is not None, "call initialize() first"
         if self.forced is not None:
             return self.forced
-        wanted = self._wanted(self.current, weather, lux)  # unknown weather keeps the biome
+        wanted = self._wanted(self.current, weather, lux, indoor_c, night)  # unknown weather keeps the biome
         if wanted is not self.current and t - self._since < self.min_stay_s:
             return self.current
         return wanted

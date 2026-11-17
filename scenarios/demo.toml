@@ -20,7 +20,7 @@ wind_kmh = 5
 gust_kmh = 10
 
 [demo]
-length = 584
+length = 600
 loop = true
 
 # --- the clock and the time of day ---------------------------------------------------------
@@ -137,27 +137,41 @@ label = "Mild, 18 C: a pipe into the city"
 weather = "CLEAR"
 outdoor_c = 18
 
+[[sim.timeline]]
+at = 332
+label = "Gusty, 45 km/h: a pipe into the castle"
+weather = "CLEAR"
+outdoor_c = 18
+gust_kmh = 45
+
+[[sim.timeline]]
+at = 342
+label = "Grey and dark outside: the robot goes in, to the castle hall"
+time = "2026-07-02 22:00:00"
+weather = "OVERCAST"
+outdoor_c = 18
+
 # --- more clock, then the light sensor -----------------------------------------------------
 
 [[sim.timeline]]
-at = 341
+at = 357
 label = "Hour change: both blocks get bumped, hour first"
 time = "2026-07-02 12:59:48"
 
 [[sim.timeline]]
-at = 356
+at = 372
 label = "Dim evening (8 lux): the panel dims, and the robot walks into a cave"
 time = "2026-07-02 21:30:00"
 lux = 8
 
 [[sim.timeline]]
-at = 366
+at = 382
 label = "Lights out: the panel goes completely dark"
 time = "2026-07-02 21:30:00"
 lux = 0.5
 
 [[sim.timeline]]
-at = 380
+at = 396
 label = "Lights on again: out of the cave and back into the city"
 time = "2026-07-02 12:30:00"
 lux = 300
@@ -165,77 +179,77 @@ lux = 300
 # --- presence: the room empties (demo mode shortens the timings: drowsy after 10 s, dark after 45 s) ----
 
 [[sim.timeline]]
-at = 392
+at = 408
 label = "Everyone leaves the room"
 time = "2026-07-02 12:30:00"
 motion = false
 
 [[sim.timeline]]
-at = 404
+at = 420
 label = "Drowsy: the robot sits by a campfire and the display dims"
 reset = false
 
 [[sim.timeline]]
-at = 424
+at = 440
 label = "...and falls asleep (the antenna light goes out, a z floats up)"
 reset = false
 
 [[sim.timeline]]
-at = 439
+at = 455
 label = "Still nobody: the display switches itself off"
 reset = false
 
 [[sim.timeline]]
-at = 449
+at = 465
 label = "Someone walks in: the display wakes, the robot stretches"
 motion = true
 
 # --- moods, events and date specials ---------------------------------------------------------
 
 [[sim.timeline]]
-at = 462
-label = "A hot room (29 C): the robot sweats"
+at = 478
+label = "A hot room (29 C): the robot sweats, aboard a spaceship"
 time = "2026-07-02 12:00:00"
 indoor_c = 29
 
 [[sim.timeline]]
-at = 474
+at = 490
 label = "A cold room (14 C): the robot wears a scarf"
 indoor_c = 14
 
 [[sim.timeline]]
-at = 486
+at = 502
 label = "Event: a bird flies by"
 event = "bird"
 
 [[sim.timeline]]
-at = 496
+at = 512
 label = "Event: a coin to pick up"
 event = "coin"
 
 [[sim.timeline]]
-at = 514
+at = 530
 label = "Night event: a shooting star"
 time = "2026-07-12 23:10:00"
 event = "shooting_star"
 
 [[sim.timeline]]
-at = 524
+at = 540
 label = "Halloween: pumpkins roll past, their faces glow"
 time = "2026-10-31 12:00:00"
 
 [[sim.timeline]]
-at = 540
+at = 556
 label = "Christmas: a string of lights over the clock"
 time = "2026-12-24 19:00:00"
 
 [[sim.timeline]]
-at = 552
+at = 568
 label = "A birthday: a cake rolls past, with confetti"
 time = "2026-07-02 12:00:00"
 event = "cake"
 
 [[sim.timeline]]
-at = 568
+at = 584
 label = "The hour changes: both blocks bump and sparkle"
 time = "2026-07-02 12:59:48"

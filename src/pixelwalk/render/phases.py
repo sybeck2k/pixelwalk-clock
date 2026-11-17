@@ -44,6 +44,8 @@ OVERRIDES: dict[Phase, dict[str, RGB]] = {
         "X": (26, 32, 70),
         "e": (78, 88, 138),  # far towers vs the night sky behind them
         "E": (56, 64, 112),
+        "f": (124, 120, 152),  # castle stone vs its shade and mortar
+        "F": (66, 58, 92),
         "m": (108, 64, 84),  # brick vs its shade and the dark windows
         "M": (56, 32, 52),
         "D": (28, 20, 50),  # dark dirt vs dirt in the ground speckle

@@ -82,6 +82,13 @@ def weather_sheet(date: str = "2026-07-01", scale: int = 4, cols: int = 5) -> Im
     for biome, temp in (("grass", 5.0), ("city", 18.0), ("desert", 35.0), ("snow", -5.0)):
         w = make_weather(Condition.CLEAR, temp, noon, gust=60.0)
         cells.append((f"{biome} windy", noon, WorldSnapshot(weather=w)))
+    for label, cond, gust, when in (
+        ("castle day", Condition.OVERCAST, 10.0, noon), ("castle dusk", Condition.OVERCAST, 10.0, at(18, 0)),
+        ("castle hall (night)", Condition.OVERCAST, 10.0, at(23)), ("castle gusty", Condition.CLEAR, 45.0, noon),
+    ):
+        cells.append((label, when, WorldSnapshot(weather=make_weather(cond, 18.0, when, gust=gust))))
+    hot = SensorReading(lux=250.0, temperature_c=29.0, humidity_pct=45.0, pressure_hpa=1012.0, at=noon)
+    cells.append(("spaceship (hot room)", noon, WorldSnapshot(weather=make_weather(Condition.CLEAR, 18.0, noon), sensors=hot)))
     for label, cond, gust in (("cave (dim room)", Condition.CLEAR, 10.0), ("cave, storm outside", Condition.THUNDER, 60.0)):
         room = SensorReading(lux=8.0, temperature_c=21.0, humidity_pct=45.0, pressure_hpa=1012.0, at=noon)
         cells.append((label, noon, WorldSnapshot(weather=make_weather(cond, 18.0, noon, gust=gust), sensors=room)))

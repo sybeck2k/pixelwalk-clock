@@ -186,7 +186,7 @@ def test_hot_and_cold_rooms_change_the_robot_and_a_comfortable_one_does_not():
     now = at()
 
     def scene(indoor, **kw):  # below the status row, where the temperature text changes colour anyway
-        r = renderer(**kw)
+        r = renderer(biome="grass", **kw)  # a hot room would otherwise be the spaceship
         return r.render(snapshot(now, indoor=indoor), 1.0, now).crop((0, 24, 64, 64))
 
     comfy, hot, cold = scene(21.0), scene(29.0), scene(14.0)

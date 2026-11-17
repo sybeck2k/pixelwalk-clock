@@ -35,15 +35,19 @@ def at(h=12, m=0, s=0, day=1):
 GRASS_C = 5.0
 
 
-def snap(cond, temp=GRASS_C, when=None, gust=10.0, cover=80.0, trend="steady", lux=None):
+def snap(cond, temp=GRASS_C, when=None, gust=10.0, cover=80.0, trend="steady", lux=None, indoor_c=21.0):
     when = when or at()
-    sensors = None if lux is None else SensorReading(lux, 21.0, 45.0, 1012.0, when)
+    sensors = None if lux is None and indoor_c == 21.0 else SensorReading(lux, indoor_c, 45.0, 1012.0, when)
     return WorldSnapshot(weather=make_weather(cond, temp, when, gust, cover), pressure_trend=trend, sensors=sensors)
 
 
-def scene(cond, temp=GRASS_C, when=None, **kw):
+def scene(cond, temp=None, when=None, pin=None, **kw):
+    """One frame. Without a temperature the scene is pinned to the grassland (so overcast or gusty
+    weather tests do not turn into the castle); with one, the biome is chosen as in the app."""
     when = when or at()
-    r = Renderer(ASSETS, seed=1)
+    if temp is None:
+        temp, pin = GRASS_C, pin or "grass"
+    r = Renderer(ASSETS, seed=1, biome=pin or "auto")
     img = r.render(snap(cond, temp, when, **kw), 0.0, when).copy()
     return img, r
 
@@ -148,6 +152,7 @@ def test_wind_overlay_needs_gusts_and_differs_by_biome():
 @pytest.mark.parametrize("temp,cond,biome,ground_colour", [
     (5.0, C.CLEAR, Biome.GRASS, "g"),
     (18.0, C.CLEAR, Biome.CITY, "A"),  # the road
+    (18.0, C.OVERCAST, Biome.CASTLE, "f"),  # grey weather: the castle
     (-5.0, C.CLEAR, Biome.SNOW, "W"),
     (18.0, C.SNOW, Biome.SNOW, "W"),  # snowing makes a snowfield even when mild
     (35.0, C.CLEAR, Biome.DESERT, "n"),
@@ -393,6 +398,63 @@ def test_golden_weather_scenes(request, name, cond, temp, when):
     assert img.tobytes() == Image.open(path).convert("RGB").tobytes()
 
 
+# --- the castle, its hall and the spaceship ----------------------------------------------
+
+
+def test_gusty_or_grey_weather_is_the_castle_by_day_and_its_hall_after_dark():
+    for cond, gust in ((C.OVERCAST, 5.0), (C.FOG, 5.0), (C.CLEAR, 35.0)):
+        _, day = scene(cond, 15.0, at(12), gust=gust)
+        _, night = scene(cond, 15.0, at(23), gust=gust)
+        assert day.biome is Biome.CASTLE and night.biome is Biome.HALL, (cond, gust)
+    _, calm = scene(C.CLEAR, 15.0, at(12), gust=10.0)
+    assert calm.biome is Biome.CITY
+
+
+def test_a_hot_room_is_the_spaceship_whatever_the_weather_or_the_hour():
+    for hour in (12, 23):
+        _, r = scene(C.THUNDER, 15.0, at(hour), indoor_c=29.0)
+        assert r.biome is Biome.SHIP
+    _, comfy = scene(C.CLEAR, 15.0, at(12), indoor_c=24.0)
+    assert comfy.biome is Biome.CITY
+
+
+def test_the_hall_and_the_ship_are_sheltered_like_the_cave():
+    base = {}
+    for name, kw in (("hall", {}), ("ship", {})):
+        noon, r = scene(C.CLEAR, 15.0, at(12), pin=name)
+        storm, _ = scene(C.THUNDER, 15.0, at(23), pin=name, gust=60.0)
+        assert r.biome is Biome(name)
+        left = (0, 24, 20, 64)
+        assert noon.crop(left).tobytes() == storm.crop(left).tobytes(), name
+        base[name] = noon
+    assert base["hall"].tobytes() != base["ship"].tobytes()
+
+
+@pytest.mark.parametrize("brightness", [10, 8])
+@pytest.mark.parametrize("name,hour", [
+    ("castle", 12), ("castle", 19), ("castle", 23), ("castle", 5), ("hall", 12), ("ship", 12), ("hall", 23),
+])
+def test_castle_hall_and_ship_stay_distinguishable_at_low_brightness(name, hour, brightness):
+    from pixelwalk.tools.led_preview import collapsed_pairs
+
+    img, _ = scene(C.CLEAR, 15.0, at(hour), pin=name)
+    assert collapsed_pairs(img, brightness) == [], (name, hour)
+
+
+@pytest.mark.parametrize("name,cond,temp,when,kw", [
+    ("castle_noon", C.OVERCAST, 15.0, at(12), {}),
+    ("hall_night", C.OVERCAST, 15.0, at(23), {}),
+    ("ship", C.CLEAR, 15.0, at(12), {"indoor_c": 29.0}),
+])
+def test_golden_castle_hall_and_ship(request, name, cond, temp, when, kw):
+    img, _ = scene(cond, temp, when, **kw)
+    path = GOLDEN / f"{name}.png"
+    if request.config.getoption("--update-golden"):
+        img.save(path)
+    assert path.exists(), "no golden frame; run pytest --update-golden"
+    assert img.tobytes() == Image.open(path).convert("RGB").tobytes()
+
+
 # --- the cave: a dim room ----------------------------------------------------------------
 
 
@@ -484,7 +546,7 @@ def test_fog_at_night_only_merges_the_dark_haze_in_the_sky():
 def test_fog_at_night_in_the_city_only_merges_dark_haze():
     from pixelwalk.tools.led_preview import collapsed_pairs
 
-    img, r = scene(C.FOG, 15.0, at(23))
+    img, r = scene(C.FOG, 15.0, at(23), pin="city")  # (unpinned, fog after dark is the castle hall)
     assert r.biome is Biome.CITY
     for a, b, _edges in collapsed_pairs(img, 10):
         assert max(a) < 100 and max(b) < 100  # the far towers sink into the haze; the lit windows do not

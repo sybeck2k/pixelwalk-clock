@@ -315,12 +315,14 @@ class Renderer:
 
         # Biome and transition.
         lux = snap.sensors.lux if snap.sensors is not None else None
+        room_c = snap.sensors.temperature_c if snap.sensors is not None else None
+        night = sun_progress(s, sunrise, sunset) is None  # the sun is down: the castle is its hall
         if self.selector.current is None:
-            self.biome = self.selector.initialize(t, weather, lux)
+            self.biome = self.selector.initialize(t, weather, lux, room_c, night)
         pv = snap.presence
         active = pv is None or pv.state is PresenceState.ACTIVE  # resting: no pipe trips, no bumps
         if self._transition is None and not self.clockface.bumping and active:
-            wanted = self.selector.target(t, weather, lux)
+            wanted = self.selector.target(t, weather, lux, room_c, night)
             if wanted is not self.selector.current:
                 self._transition = Transition(t, self.selector.current, wanted)
         tv = self._transition.view(t) if self._transition else None

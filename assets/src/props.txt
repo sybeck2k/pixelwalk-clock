@@ -95,3 +95,60 @@ kkkkkkkkkkkkkkkk
 .kawaaaaaaaAAAk.
 .kawaaaaaaaAAAk.
 .kkkkkkkkkkkkkk.
+
+sprite pipe_castle 16x16 ground
+frame pipe
+kkkkkkkkkkkkkkkk
+kawwaaaaaaaaaAAk
+kawwaaaaaaaaaAAk
+kkkkkkkkkkkkkkkk
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.krwrrrrrrrMMMk.
+.krwrrrrrrrMMMk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.krwrrrrrrrMMMk.
+.krwrrrrrrrMMMk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kkkkkkkkkkkkkk.
+
+sprite pipe_hall 16x16 ground
+frame pipe
+kkkkkkkkkkkkkkkk
+kawwaaaaaaaaaAAk
+kawwaaaaaaaaaAAk
+kkkkkkkkkkkkkkkk
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kywyyyyyyyYYYk.
+.kywyyyyyyyYYYk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kywyyyyyyyYYYk.
+.kywyyyyyyyYYYk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kkkkkkkkkkkkkk.
+
+sprite pipe_ship 16x16 ground
+frame pipe
+kkkkkkkkkkkkkkkk
+kawwaaaaaaaaaAAk
+kawwaaaaaaaaaAAk
+kkkkkkkkkkkkkkkk
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kpwpppppppvvvk.
+.kpwpppppppvvvk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kpwpppppppvvvk.
+.kpwpppppppvvvk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kkkkkkkkkkkkkk.

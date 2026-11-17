@@ -109,6 +109,33 @@ def test_choose_biome_with_the_room_light(current, temp, cond, lux, expected):
     assert choose_biome(current, temp, cond, lux) is expected
 
 
+@pytest.mark.parametrize(
+    "current,temp,cond,kw,expected",
+    [
+        (Biome.GRASS, 15, C.OVERCAST, {}, Biome.CASTLE),  # grey weather: the castle...
+        (Biome.CITY, 15, C.FOG, {}, Biome.CASTLE),
+        (Biome.CITY, 15, C.OVERCAST, {"night": True}, Biome.HALL),  # ...or its hall once the sun is down
+        (Biome.GRASS, 15, C.CLEAR, {"gust_kmh": 29.9}, Biome.CITY),
+        (Biome.GRASS, 15, C.CLEAR, {"gust_kmh": 30.0}, Biome.CASTLE),  # gusts from 30 km/h
+        (Biome.CASTLE, 15, C.CLEAR, {"gust_kmh": 23.0}, Biome.CASTLE),  # hysteresis: stays down to 22
+        (Biome.CASTLE, 15, C.CLEAR, {"gust_kmh": 21.0}, Biome.CITY),
+        (Biome.HALL, 15, C.CLEAR, {"gust_kmh": 23.0, "night": True}, Biome.HALL),
+        (Biome.CITY, -5, C.OVERCAST, {}, Biome.SNOW),  # the extremes win over grey weather
+        (Biome.CITY, 35, C.OVERCAST, {"gust_kmh": 50.0}, Biome.DESERT),
+        (Biome.CITY, 15, C.CLEAR, {"indoor_c": 27.1}, Biome.SHIP),  # a hot room: the spaceship
+        (Biome.CITY, 15, C.CLEAR, {"indoor_c": 26.9}, Biome.CITY),
+        (Biome.SHIP, 15, C.CLEAR, {"indoor_c": 25.5}, Biome.SHIP),  # hysteresis: leaves below 25
+        (Biome.SHIP, 15, C.CLEAR, {"indoor_c": 24.9}, Biome.CITY),
+        (Biome.CITY, 15, C.OVERCAST, {"indoor_c": 30.0, "night": True}, Biome.SHIP),  # the room wins
+        (Biome.CITY, 15, C.CLEAR, {"indoor_c": 30.0, "lux": 5.0}, Biome.CAVE),  # but a dim room wins over a hot one
+        (Biome.SHIP, None, None, {"indoor_c": 22.0}, Biome.GRASS),  # weather unknown, room comfortable again
+        (Biome.HALL, None, None, {}, Biome.HALL),
+    ],
+)
+def test_choose_biome_castle_hall_and_ship(current, temp, cond, kw, expected):
+    assert choose_biome(current, temp, cond, **kw) is expected
+
+
 def test_biome_selector_minimum_stay_and_unknown_weather():
     sel = BiomeSelector(min_stay_s=600)
     cold = make_weather(C.CLEAR, -5.0, __import__("datetime").datetime(2026, 1, 1).astimezone())

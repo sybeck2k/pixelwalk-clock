@@ -331,6 +331,296 @@ def build_crystals(pal: Pal, rng: random.Random) -> Image.Image:
     return img
 
 
+# --- the castle ---------------------------------------------------------------------------
+# Outside: far castles on low hills and, nearer, a medieval village. Windows use the city's 'x' and
+# 'X', so they light up from dusk too (though by then the director has moved indoors, to the hall).
+
+
+def _crenellate(d: ImageDraw.ImageDraw, x0: int, x1: int, y: int) -> None:
+    """Cut a row of notches into the top of a wall: every other 2 px of it becomes air."""
+    for x in range(x0, x1 + 1, 4):
+        d.rectangle((x, y, x + 1, y), fill=(0, 0, 0, 0))
+
+
+def build_far_castles(pal: Pal, rng: random.Random) -> Image.Image:
+    """Far: rolling hills with castles on them (a keep between two towers with pointed roofs)."""
+    hill, stone, shade, roof = pal["h"], pal["e"], pal["E"], pal["E"]
+    img, d = _strip(FAR_H)
+    base = FAR_H - 8
+    cx = rng.randint(10, 30)
+    while cx < STRIP_W + 30:  # the hills
+        rx, ry = rng.randint(30, 50), rng.randint(5, 9)
+        for off in _wrapped(0):
+            d.ellipse((cx - rx + off, base - ry, cx + rx + off, base + ry), fill=(*hill, 255))
+        cx += rng.randint(50, 80)
+    d.rectangle((0, base, STRIP_W - 1, FAR_H - 1), fill=(*hill, 255))
+    for centre in (rng.randint(30, 80), rng.randint(150, 210)):  # two castles per strip
+        kw, kh = rng.randint(12, 16), rng.randint(13, 18)
+        tw, th = 6, kh + rng.randint(3, 6)
+        flag = rng.random() < 0.7
+        for off in _wrapped(0):
+            x = centre + off
+            top = base - kh
+            d.rectangle((x - kw // 2, top, x + kw // 2, base), fill=(*stone, 255))  # keep
+            _crenellate(d, x - kw // 2, x + kw // 2, top)
+            d.line((x + kw // 2, top, x + kw // 2, base), fill=(*shade, 255))
+            d.rectangle((x - 1, top + 4, x, top + 6), fill=(*pal["X"], 255))  # a window slit
+            for side in (-1, 1):  # two towers
+                tx = x + side * (kw // 2 + 1)
+                ttop = base - th
+                d.rectangle((tx - tw // 2, ttop, tx + tw // 2 - 1, base), fill=(*stone, 255))
+                d.line((tx + tw // 2 - 1, ttop, tx + tw // 2 - 1, base), fill=(*shade, 255))
+                d.polygon([(tx - tw // 2 - 1, ttop), (tx, ttop - 6), (tx + tw // 2, ttop)], fill=(*roof, 255))
+                d.point((tx, ttop + 3), fill=(*pal["X"], 255))
+            if flag:
+                d.line((x, top - 4, x, top - 1), fill=(*shade, 255))
+                d.point((x + 1, top - 4), fill=(*pal["r"], 255))
+                d.point((x + 2, top - 4), fill=(*pal["r"], 255))
+    return img
+
+
+def build_village(pal: Pal, rng: random.Random) -> Image.Image:
+    """Near: stone walls with battlements (some with a gate), timbered cottages, banners and oaks."""
+    stone, stone_dk, plaster, wood = pal["f"], pal["F"], pal["l"], pal["b"]
+    lit, dark = pal["x"], pal["X"]
+    img, d = _strip(NEAR_H)
+    base = NEAR_H - 1
+    x = rng.randint(0, 6)
+    while x < STRIP_W:
+        kind = rng.choice(("wall", "wall", "cottage", "cottage", "banner", "tree"))
+        if kind == "wall":
+            w, h = rng.randint(22, 32), rng.randint(11, 15)
+            top = NEAR_H - h
+            gate = rng.random() < 0.5
+            for off in _wrapped(0):
+                d.rectangle((x + off, top, x + w - 1 + off, base), fill=(*stone, 255))
+                for y in range(top + 3, base, 4):  # courses of stone
+                    d.line((x + off, y, x + w - 1 + off, y), fill=(*stone_dk, 255))
+                    for bx in range(x + (y // 4 % 2) * 3, x + w, 6):
+                        d.point((bx + off, y - 1), fill=(*stone_dk, 255))
+                d.line((x + w - 1 + off, top, x + w - 1 + off, base), fill=(*stone_dk, 255))
+                for mx in range(x, x + w - 2, 4):  # merlons
+                    d.rectangle((mx + off, top - 2, mx + 2 + off, top), fill=(*stone, 255))
+                if gate:
+                    gx = x + w // 2 - 2 + off
+                    d.rectangle((gx, base - 6, gx + 4, base), fill=(*pal["D"], 255))
+                    d.rectangle((gx + 1, base - 7, gx + 3, base - 7), fill=(*pal["D"], 255))
+                else:  # an arrow slit
+                    d.rectangle((x + w // 2 + off, top + 5, x + w // 2 + off, top + 7), fill=(*dark, 255))
+            x += w + rng.randint(0, 2)
+        elif kind == "cottage":
+            w, wall_h = rng.randint(16, 22), rng.randint(8, 10)
+            roof_c = pal[rng.choice(("r", "Y", "B"))]
+            window_lit = rng.random() < 0.6
+            for off in _wrapped(0):
+                top = base - wall_h
+                d.rectangle((x + off, top, x + w - 1 + off, base), fill=(*plaster, 255))
+                for bx in (x, x + w // 2, x + w - 1):  # timber framing
+                    d.line((bx + off, top, bx + off, base), fill=(*wood, 255))
+                d.line((x + off, top, x + w - 1 + off, top), fill=(*wood, 255))
+                d.polygon([(x - 2 + off, top), (x + w // 2 + off, top - 7), (x + w + 1 + off, top)], fill=(*roof_c, 255))
+                d.rectangle((x + w - 5 + off, top - 6, x + w - 3 + off, top - 2), fill=(*stone_dk, 255))  # chimney
+                d.rectangle((x + 2 + off, base - 5, x + 4 + off, base - 3), fill=(*(lit if window_lit else dark), 255))
+                d.rectangle((x + w - 8 + off, base - 5, x + w - 6 + off, base), fill=(*wood, 255))  # door
+            x += w + rng.randint(2, 5)
+        elif kind == "banner":
+            for off in _wrapped(0):
+                cx = x + 3 + off
+                d.rectangle((cx - 1, base - 1, cx + 2, base), fill=(*stone_dk, 255))
+                d.line((cx, base - 18, cx, base - 2), fill=(*wood, 255))
+                d.rectangle((cx + 1, base - 17, cx + 6, base - 11), fill=(*pal["r"], 255))
+                d.point((cx + 3, base - 15), fill=(*pal["y"], 255))
+                d.line((cx + 2, base - 14, cx + 4, base - 14), fill=(*pal["y"], 255))
+                d.point((cx + 3, base - 13), fill=(*pal["y"], 255))
+            x += 11
+        else:
+            for off in _wrapped(0):
+                cx = x + 5 + off
+                d.rectangle((cx - 1, base - 6, cx, base), fill=(*wood, 255))
+                d.ellipse((cx - 6, base - 17, cx + 5, base - 5), fill=(*pal["G"], 255))
+                for dx, dy in ((-3, -14), (0, -15), (-4, -11), (-1, -12)):
+                    d.point((cx + dx, base + dy), fill=(*pal["g"], 255))
+            x += 13
+    return img
+
+
+# --- the castle hall (sheltered) ----------------------------------------------------------
+
+
+def build_hall_wall(pal: Pal, width: int, height: int) -> Image.Image:
+    """Instead of a sky: a stone wall in courses, under a timber ceiling."""
+    stone, mortar, high = pal["F"], pal["D"], pal["f"]
+    img = Image.new("RGB", (width, height), stone)
+    d = ImageDraw.Draw(img)
+    for row, y in enumerate(range(5, height, 6)):
+        d.line((0, y, width - 1, y), fill=mortar)
+        for x in range((row % 2) * 5, width, 10):
+            d.line((x, y + 1, x, min(height - 1, y + 5)), fill=mortar)
+            d.point((x + 2, y + 2), fill=high)
+    d.rectangle((0, 0, width - 1, 3), fill=pal["b"])  # ceiling beams
+    d.line((0, 4, width - 1, 4), fill=pal["D"])
+    for x in range(6, width, 16):
+        d.rectangle((x, 5, x + 1, 8), fill=pal["b"])  # rafters
+    return img
+
+
+def build_hall_arcade(pal: Pal, rng: random.Random) -> Image.Image:
+    """Far hall: pillars, moonlit arched windows and hanging tapestries along the wall."""
+    stone, shade, wood = pal["f"], pal["F"], pal["b"]
+    img, d = _strip(FAR_H)
+    d.rectangle((0, FAR_H - 9, STRIP_W - 1, FAR_H - 1), fill=(*wood, 255))  # wainscot
+    d.line((0, FAR_H - 9, STRIP_W - 1, FAR_H - 9), fill=(*pal["D"], 255))
+    period = 32  # a pillar every 32 px, one of them on the seam, so the strip loops
+    for i in range(STRIP_W // period):
+        x = i * period - 3
+        kind = rng.choice(("window", "window", "tapestry"))
+        gap = period - 6
+        for off in _wrapped(0):
+            px = x + off
+            d.rectangle((px, 0, px + 5, FAR_H - 10), fill=(*stone, 255))  # the pillar
+            d.line((px + 5, 0, px + 5, FAR_H - 10), fill=(*shade, 255))
+            d.rectangle((px - 1, 0, px + 6, 1), fill=(*stone, 255))
+            wx = px + 6 + (gap - 8) // 2 + 1
+            if kind == "window":
+                d.rectangle((wx - 1, 5, wx + 8, 20), fill=(*stone, 255))  # frame
+                d.ellipse((wx - 1, 2, wx + 8, 9), fill=(*stone, 255))
+                d.rectangle((wx, 6, wx + 7, 19), fill=(*pal["u"], 255))
+                d.ellipse((wx, 3, wx + 7, 9), fill=(*pal["u"], 255))
+                d.line((wx + 3, 3, wx + 3, 19), fill=(*pal["U"], 255))
+                d.line((wx, 12, wx + 7, 12), fill=(*pal["U"], 255))
+                d.point((wx + 1, 7), fill=(*pal["c"], 255))
+            else:
+                d.rectangle((wx, 2, wx + 7, 18), fill=(*pal["r"], 255))
+                d.line((wx, 2, wx + 7, 2), fill=(*pal["Y"], 255))
+                d.polygon([(wx + 3, 7), (wx + 5, 10), (wx + 3, 13), (wx + 1, 10)], fill=(*pal["y"], 255))
+                for fx in range(wx, wx + 8, 2):
+                    d.point((fx, 19), fill=(*pal["Y"], 255))
+    return img
+
+
+def build_hall_furniture(pal: Pal, rng: random.Random) -> Image.Image:
+    """Near hall: braziers, a long table, barrels and a suit of armour."""
+    img, d = _strip(NEAR_H)
+    base = NEAR_H - 1
+    x = rng.randint(14, 22)
+    while x < STRIP_W - 14:  # nothing across the seam
+        kind = rng.choice(("brazier", "brazier", "table", "barrel", "armour"))
+        for off in _wrapped(0):
+            cx = x + off
+            if kind == "brazier":
+                d.line((cx - 3, base, cx - 1, base - 6), fill=(*pal["A"], 255))
+                d.line((cx + 3, base, cx + 1, base - 6), fill=(*pal["A"], 255))
+                d.rectangle((cx - 4, base - 8, cx + 4, base - 6), fill=(*pal["a"], 255))
+                d.polygon([(cx - 3, base - 8), (cx, base - 15), (cx + 3, base - 8)], fill=(*pal["B"], 255))
+                d.polygon([(cx - 1, base - 8), (cx, base - 12), (cx + 1, base - 8)], fill=(*pal["y"], 255))
+            elif kind == "table":
+                d.rectangle((cx - 10, base - 9, cx + 10, base - 7), fill=(*pal["b"], 255))
+                d.line((cx - 10, base - 7, cx + 10, base - 7), fill=(*pal["D"], 255))
+                for lx in (cx - 9, cx + 8):
+                    d.rectangle((lx, base - 6, lx + 1, base), fill=(*pal["D"], 255))
+                d.rectangle((cx - 6, base - 12, cx - 5, base - 10), fill=(*pal["y"], 255))  # goblets
+                d.rectangle((cx + 2, base - 12, cx + 3, base - 10), fill=(*pal["y"], 255))
+                d.line((cx - 2, base - 10, cx, base - 10), fill=(*pal["w"], 255))
+            elif kind == "barrel":
+                d.ellipse((cx - 4, base - 9, cx + 4, base), fill=(*pal["b"], 255))
+                for hy in (base - 7, base - 2):
+                    d.line((cx - 3, hy, cx + 3, hy), fill=(*pal["D"], 255))
+            else:
+                d.rectangle((cx - 3, base - 8, cx + 3, base - 2), fill=(*pal["a"], 255))  # armour
+                d.rectangle((cx - 2, base - 15, cx + 2, base - 9), fill=(*pal["a"], 255))
+                d.line((cx - 2, base - 12, cx + 2, base - 12), fill=(*pal["k"], 255))
+                d.line((cx, base - 17, cx, base - 15), fill=(*pal["r"], 255))
+                d.line((cx + 3, base - 2, cx + 3, base), fill=(*pal["A"], 255))
+                d.line((cx - 3, base - 2, cx - 3, base), fill=(*pal["A"], 255))
+                d.line((cx + 5, base - 14, cx + 5, base), fill=(*pal["A"], 255))  # a spear
+        x += rng.randint(26, 44)
+    return img
+
+
+# --- the spaceship (sheltered) ------------------------------------------------------------
+
+
+def build_ship_wall(pal: Pal, width: int, height: int) -> Image.Image:
+    """Instead of a sky: hull plating with seams, rivets and a ceiling light strip."""
+    img = Image.new("RGB", (width, height), pal["P"])
+    d = ImageDraw.Draw(img)
+    for x in range(15, width, 16):
+        d.line((x, 4, x, height - 1), fill=pal["q"])  # panel seams
+    for y in (20, 36, 52):
+        d.line((0, y, width - 1, y), fill=pal["q"])
+    for x in range(1, width, 16):
+        for y in (22, 38, 54):
+            d.point((x, y), fill=pal["Q"])
+    d.rectangle((0, 0, width - 1, 1), fill=pal["Q"])  # ceiling trunking
+    for x in range(0, width, 8):
+        d.line((x, 2, x + 5, 2), fill=pal["c"])  # the light strip
+    d.line((0, 3, width - 1, 3), fill=pal["q"])
+    return img
+
+
+def build_ship_viewports(pal: Pal, rng: random.Random) -> Image.Image:
+    """Far ship: struts between big viewports on to space, with stars and a planet."""
+    frame, shade, space = pal["Q"], pal["P"], pal["q"]
+    img, d = _strip(FAR_H)
+    d.rectangle((0, FAR_H - 9, STRIP_W - 1, FAR_H - 1), fill=(*frame, 255))  # lower wall
+    d.line((0, FAR_H - 9, STRIP_W - 1, FAR_H - 9), fill=(*pal["A"], 255))
+    for lx in range(3, STRIP_W, 8):
+        d.point((lx, FAR_H - 5), fill=(*pal["c"], 255))
+    period = 64
+    planet_at = rng.randrange(STRIP_W // period)
+    for i in range(STRIP_W // period):
+        x = i * period
+        d.rectangle((x, 0, x + 5, FAR_H - 10), fill=(*frame, 255))  # strut
+        d.line((x + 5, 0, x + 5, FAR_H - 10), fill=(*shade, 255))
+        wx0, wx1 = x + 8, x + period - 3
+        d.rectangle((wx0 - 1, 1, wx1 + 2, 19), fill=(*frame, 255))  # frame
+        d.rectangle((wx0, 2, wx1, 18), fill=(*space, 255))
+        for _ in range(9):
+            sx, sy = rng.randint(wx0 + 1, wx1 - 1), rng.randint(3, 17)
+            d.point((sx, sy), fill=(*pal[rng.choice("wwwyc")], 255))
+        if i == planet_at:
+            px, py = rng.randint(wx0 + 10, wx1 - 10), rng.randint(8, 12)
+            d.ellipse((px - 6, py - 6, px + 6, py + 6), fill=(*pal["u"], 255))
+            d.ellipse((px - 6, py - 6, px + 2, py + 2), fill=(*pal["c"], 255))
+            d.line((px - 9, py + 2, px + 9, py - 2), fill=(*pal["w"], 255))
+    return img
+
+
+def build_ship_deck(pal: Pal, rng: random.Random) -> Image.Image:
+    """Near ship: consoles with screens, cargo crates and cryo pods."""
+    img, d = _strip(NEAR_H)
+    base = NEAR_H - 1
+    x = rng.randint(12, 20)
+    while x < STRIP_W - 12:  # nothing across the seam
+        kind = rng.choice(("console", "console", "crates", "pod"))
+        blips = [rng.choice("ctrg") for _ in range(4)]
+        for off in _wrapped(0):
+            cx = x + off
+            if kind == "console":
+                d.rectangle((cx - 8, base - 9, cx + 8, base), fill=(*pal["A"], 255))
+                d.rectangle((cx - 8, base - 10, cx + 8, base - 9), fill=(*pal["Q"], 255))
+                d.rectangle((cx - 6, base - 8, cx + 6, base - 4), fill=(*pal["q"], 255))  # the screen
+                for i, b in enumerate(blips):
+                    d.line((cx - 5 + i * 3, base - 5, cx - 5 + i * 3, base - 5 - (i % 3)), fill=(*pal[b], 255))
+                for i in range(3):
+                    d.point((cx - 5 + i * 5, base - 2), fill=(*pal["r" if i == 1 else "g"], 255))
+            elif kind == "crates":
+                d.rectangle((cx - 5, base - 7, cx + 3, base), fill=(*pal["B"], 255))
+                d.line((cx - 5, base - 3, cx + 3, base - 3), fill=(*pal["Y"], 255))
+                d.line((cx - 5, base - 7, cx + 3, base), fill=(*pal["Y"], 255))
+                d.rectangle((cx - 2, base - 13, cx + 4, base - 8), fill=(*pal["B"], 255))
+                d.rectangle((cx - 2, base - 13, cx + 4, base - 13), fill=(*pal["Y"], 255))
+                d.rectangle((cx + 4, base - 5, cx + 8, base), fill=(*pal["Y"], 255))
+            else:
+                d.rectangle((cx - 4, base - 16, cx + 4, base), fill=(*pal["a"], 255))  # the capsule
+                d.rectangle((cx - 2, base - 14, cx + 2, base - 4), fill=(*pal["c"], 255))
+                d.line((cx - 1, base - 13, cx - 1, base - 8), fill=(*pal["w"], 255))
+                d.rectangle((cx - 5, base - 2, cx + 5, base), fill=(*pal["A"], 255))
+                d.point((cx, base - 15), fill=(*pal["r"], 255))
+        x += rng.randint(26, 46)
+    return img
+
+
 def build_ground(tiles: list[Image.Image], rng: random.Random) -> Image.Image:
     img = Image.new("RGBA", (STRIP_W, GROUND_H))
     for i in range(STRIP_W // 8):
@@ -356,6 +646,15 @@ BIOMES: dict[Biome, BiomeDef] = {
     Biome.SNOW: BiomeDef("ground_snow", build_peaks, build_pines, "pipe_snow", "snow"),
     Biome.DESERT: BiomeDef("ground_sand", build_dunes, build_cacti, "pipe_desert", "sand"),
     Biome.CITY: BiomeDef("ground_city", build_skyline, build_street, "pipe_city", "leaves"),
+    Biome.CASTLE: BiomeDef("ground_castle", build_far_castles, build_village, "pipe_castle", "leaves"),
+    Biome.HALL: BiomeDef(
+        "ground_hall", build_hall_arcade, build_hall_furniture, "pipe_hall", "leaves",
+        sheltered=True, backdrop=build_hall_wall,
+    ),
+    Biome.SHIP: BiomeDef(
+        "ground_ship", build_ship_viewports, build_ship_deck, "pipe_ship", "leaves",
+        sheltered=True, backdrop=build_ship_wall,
+    ),
     Biome.CAVE: BiomeDef(
         "ground_cave", build_rock_mounds, build_crystals, "pipe_cave", "leaves",
         sheltered=True, backdrop=build_cave_wall,
