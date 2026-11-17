@@ -30,7 +30,7 @@ from ..logic.astro import (
 )
 from ..logic.clockface import GROUND_Y, HOME_X, ClockFace, HeroOverride
 from ..logic.director import Biome, BiomeSelector, effect_target, hero_accessory
-from ..logic.effects import EffectState
+from ..logic.effects import EffectLevels, EffectState
 from ..logic.events import (
     STYLES,
     EventScheduler,
@@ -82,6 +82,9 @@ FOG_WASH = {Phase.DAY: (205, 210, 220), Phase.DAWN: (200, 175, 180), Phase.DUSK:
 # Dimming and fog compress contrast, which an already dark night scene cannot afford (the panel
 # has only ~23 brightness levels at 10%), so they are gentler at night.
 NIGHT_SOFTEN = {Phase.DAY: 1.0, Phase.DAWN: 1.0, Phase.DUSK: 0.9, Phase.NIGHT: 0.35}
+
+
+_NO_WEATHER = EffectLevels(clear=0.0)  # what a sheltered biome (the cave) shows of the weather: nothing
 
 
 def _mix(a: tuple, b: tuple, t: float) -> tuple[int, int, int]:
@@ -311,12 +314,13 @@ class Renderer:
         hero_phase = blend.b if blend.t >= 0.5 else blend.a
 
         # Biome and transition.
+        lux = snap.sensors.lux if snap.sensors is not None else None
         if self.selector.current is None:
-            self.biome = self.selector.initialize(t, weather)
+            self.biome = self.selector.initialize(t, weather, lux)
         pv = snap.presence
         active = pv is None or pv.state is PresenceState.ACTIVE  # resting: no pipe trips, no bumps
         if self._transition is None and not self.clockface.bumping and active:
-            wanted = self.selector.target(t, weather)
+            wanted = self.selector.target(t, weather, lux)
             if wanted is not self.selector.current:
                 self._transition = Transition(t, self.selector.current, wanted)
         tv = self._transition.view(t) if self._transition else None
@@ -360,15 +364,20 @@ class Renderer:
         self.snow.update(dt, lv.snow)
         self.wind.update(dt, lv.leaves)
 
+        # Under a roof (the cave) the weather keeps running but is neither seen nor felt.
+        shelter = BIOMES[self.biome].sheltered
+        if shelter:
+            lv = _NO_WEATHER
         img = self._img
         sky = self.world.draw_sky(img, self.biome, blend)
-        self._celestial(img, t, now, s, sunrise, sunset, lv.clear, sky)
-        self._wash(img, _mix(SKY_WASH[blend.a], SKY_WASH[blend.b], blend.t), (0, 0, self.width, SKY_H), lv.tint)
-        for c in self.clouds.clouds:
-            cimg = self._cloud_image(c.kind, blend)
-            img.paste(cimg, (round(c.x), c.y), cimg)
-        if ev is not None and ev.name == "shooting_star" and lv.clear >= 0.5:
-            draw_shooting_star(self._draw, ev.progress(t), ev.seed, self._pal[hero_phase])
+        if not shelter:
+            self._celestial(img, t, now, s, sunrise, sunset, lv.clear, sky)
+            self._wash(img, _mix(SKY_WASH[blend.a], SKY_WASH[blend.b], blend.t), (0, 0, self.width, SKY_H), lv.tint)
+            for c in self.clouds.clouds:
+                cimg = self._cloud_image(c.kind, blend)
+                img.paste(cimg, (round(c.x), c.y), cimg)
+            if ev is not None and ev.name == "shooting_star" and lv.clear >= 0.5:
+                draw_shooting_star(self._draw, ev.progress(t), ev.seed, self._pal[hero_phase])
         far_visibility = 1.0 - min(1.0, lv.fog / 0.6)
         self.world.draw_strips(img, self.hero.world_x, self.biome, blend, far_visibility)
 
@@ -393,14 +402,15 @@ class Renderer:
             pipe = self._pipes[hero_phase][tv.pipe_biome]
             img.paste(pipe, (tv.pipe_x, PIPE_Y), pipe)
 
-        self._particles(img, hero_phase, target.slant)
+        if not shelter:
+            self._particles(img, hero_phase, target.slant)
         fog_colour = _mix(FOG_WASH[blend.a], FOG_WASH[blend.b], blend.t)
         soften = NIGHT_SOFTEN[blend.a] + (NIGHT_SOFTEN[blend.b] - NIGHT_SOFTEN[blend.a]) * blend.t
         fog = lv.fog * (0.4 + 0.6 * soften)
         self._wash(img, fog_colour, (0, FOG_TOP - 4, self.width, FOG_TOP), fog * 0.45)  # a soft top edge
         self._wash(img, fog_colour, (0, FOG_TOP, self.width, self.height), fog)
         self._wash(img, (0, 0, 0), (0, 0, self.width, self.height), lv.dim * soften)
-        flash = self.lightning.level(t, target.lightning)
+        flash = self.lightning.level(t, target.lightning and not shelter)
         if flash:
             img.paste(Image.blend(img, self._white, flash))
 

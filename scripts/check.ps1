@@ -47,7 +47,7 @@ if (-not $DemoOnly) {
     Write-Host "All checks passed." -ForegroundColor Green
     Write-Host "Art previews: assets\build\preview_*.png"
     Write-Host "Scenes: out\contact.png (every time of day and the 8 moon phases)"
-    Write-Host "Weather: out\weather.png (every condition, the three biomes, wind, barometer)"
+    Write-Host "Weather: out\weather.png (every condition, the biomes, the cave, wind, barometer)"
     Write-Host "24 h GIF: .venv\Scripts\python -m pixelwalk.tools.frame_dump --speed 1440 --seconds 60 --out out\day.gif"
 }
 

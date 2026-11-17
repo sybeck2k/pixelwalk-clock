@@ -33,3 +33,11 @@ n sand       #e8c878
 N sand_dk    #c49a50
 W snow       #dce8f4
 Z snow_dk    #a8bcd8
+e building_far   #6c7aa2
+E building_far_dk #4e5c84
+m brick          #b4654a
+M brick_dk       #8a4838
+x window         #9ad8f0
+X window_dk      #4a6a98
+o rock           #6e6890
+O rock_dk        #3e3a5a

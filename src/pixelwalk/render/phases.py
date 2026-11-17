@@ -35,7 +35,17 @@ TINT: dict[Phase, tuple[RGB, float, float]] = {
 # Hand-picked exceptions where the formula leaves two touching colours too close for the panel
 # at low brightness (found with tools/led_preview.py; at 10% there are only ~23 levels).
 OVERRIDES: dict[Phase, dict[str, RGB]] = {
+    # City windows and lamps ('x' lit, 'X' dark): the city lights up from dusk, so the strips can
+    # keep one geometry for every phase.
+    Phase.DAWN: {"x": (222, 204, 150)},
+    Phase.DUSK: {"x": (255, 214, 110)},
     Phase.NIGHT: {
+        "x": (255, 214, 100),
+        "X": (26, 32, 70),
+        "e": (78, 88, 138),  # far towers vs the night sky behind them
+        "E": (56, 64, 112),
+        "m": (108, 64, 84),  # brick vs its shade and the dark windows
+        "M": (56, 32, 52),
         "D": (28, 20, 50),  # dark dirt vs dirt in the ground speckle
         "N": (60, 50, 84),  # dark sand vs sand
         "g": (30, 118, 60),  # bush highlights vs the hills behind them

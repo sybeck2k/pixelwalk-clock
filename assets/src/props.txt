@@ -57,3 +57,41 @@ kkkkkkkkkkkkkkkk
 .kawaaaaaaaAAAk.
 .kawaaaaaaaAAAk.
 .kkkkkkkkkkkkkk.
+
+sprite pipe_city 16x16 ground
+frame pipe
+kkkkkkkkkkkkkkkk
+kawwaaaaaaaaaAAk
+kawwaaaaaaaaaAAk
+kkkkkkkkkkkkkkkk
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kvwvvvvvvvUUUk.
+.kvwvvvvvvvUUUk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kvwvvvvvvvUUUk.
+.kvwvvvvvvvUUUk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kkkkkkkkkkkkkk.
+
+sprite pipe_cave 16x16 ground
+frame pipe
+kkkkkkkkkkkkkkkk
+kawwaaaaaaaaaAAk
+kawwaaaaaaaaaAAk
+kkkkkkkkkkkkkkkk
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kcwcccccccTTTk.
+.kcwcccccccTTTk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kcwcccccccTTTk.
+.kcwcccccccTTTk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kawaaaaaaaAAAk.
+.kkkkkkkkkkkkkk.

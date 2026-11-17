@@ -37,12 +37,12 @@ time = "2026-07-01 07:20:00"
 
 [[sim.timeline]]
 at = 37
-label = "Dusk"
+label = "Dusk in the city: the windows and street lamps light up"
 time = "2026-07-01 18:25:00"
 
 [[sim.timeline]]
 at = 49
-label = "Night with a thin waning moon and twinkling stars"
+label = "Night: lit windows, a thin waning moon and twinkling stars"
 time = "2026-07-12 23:10:00"
 
 [[sim.timeline]]
@@ -114,9 +114,9 @@ gust_kmh = 50
 
 [[sim.timeline]]
 at = 271
-label = "Milder again: back through a pipe to the grassland"
+label = "Cool again, 6 C: back through a pipe to the grassland"
 weather = "CLEAR"
-outdoor_c = 12
+outdoor_c = 6
 
 [[sim.timeline]]
 at = 289
@@ -133,7 +133,7 @@ gust_kmh = 60
 
 [[sim.timeline]]
 at = 323
-label = "Back to the grassland"
+label = "Mild, 18 C: a pipe into the city"
 weather = "CLEAR"
 outdoor_c = 18
 
@@ -146,7 +146,7 @@ time = "2026-07-02 12:59:48"
 
 [[sim.timeline]]
 at = 356
-label = "Dim evening: the panel dims with the room light"
+label = "Dim evening (8 lux): the panel dims, and the robot walks into a cave"
 time = "2026-07-02 21:30:00"
 lux = 8
 
@@ -158,7 +158,7 @@ lux = 0.5
 
 [[sim.timeline]]
 at = 380
-label = "Lights on again"
+label = "Lights on again: out of the cave and back into the city"
 time = "2026-07-02 12:30:00"
 lux = 300
 

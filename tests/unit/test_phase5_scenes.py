@@ -12,7 +12,7 @@ from PIL import Image, ImageStat
 from pixelwalk.logic.clockface import MAX_LAG
 from pixelwalk.logic.director import Biome
 from pixelwalk.logic.transition import BOUNDS, HOP_END
-from pixelwalk.ports import Condition
+from pixelwalk.ports import Condition, SensorReading
 from pixelwalk.render.assets import load_assets
 from pixelwalk.render.particles import Clouds, Lightning, Rain, Snow, Wind
 from pixelwalk.render.renderer import Renderer
@@ -30,12 +30,18 @@ def at(h=12, m=0, s=0, day=1):
     return datetime(2026, 7, day, h, m, s).astimezone()
 
 
-def snap(cond, temp=18.0, when=None, gust=10.0, cover=80.0, trend="steady"):
+# The default temperature is a grass one (the city starts at 10 C), so weather tests see the same
+# biome they always did; the biome tests below pick their own temperatures.
+GRASS_C = 5.0
+
+
+def snap(cond, temp=GRASS_C, when=None, gust=10.0, cover=80.0, trend="steady", lux=None):
     when = when or at()
-    return WorldSnapshot(weather=make_weather(cond, temp, when, gust, cover), pressure_trend=trend)
+    sensors = None if lux is None else SensorReading(lux, 21.0, 45.0, 1012.0, when)
+    return WorldSnapshot(weather=make_weather(cond, temp, when, gust, cover), pressure_trend=trend, sensors=sensors)
 
 
-def scene(cond, temp=18.0, when=None, **kw):
+def scene(cond, temp=GRASS_C, when=None, **kw):
     when = when or at()
     r = Renderer(ASSETS, seed=1)
     img = r.render(snap(cond, temp, when, **kw), 0.0, when).copy()
@@ -140,7 +146,8 @@ def test_wind_overlay_needs_gusts_and_differs_by_biome():
 
 
 @pytest.mark.parametrize("temp,cond,biome,ground_colour", [
-    (18.0, C.CLEAR, Biome.GRASS, "g"),
+    (5.0, C.CLEAR, Biome.GRASS, "g"),
+    (18.0, C.CLEAR, Biome.CITY, "A"),  # the road
     (-5.0, C.CLEAR, Biome.SNOW, "W"),
     (18.0, C.SNOW, Biome.SNOW, "W"),  # snowing makes a snowfield even when mild
     (35.0, C.CLEAR, Biome.DESERT, "n"),
@@ -283,7 +290,7 @@ def test_effects_fade_in_over_ten_seconds_when_the_weather_changes():
 def test_biome_transition_end_to_end_through_the_renderer():
     r = Renderer(ASSETS, seed=1, min_stay_s=5.0)
     now0 = at(11, 59, 48)  # the minute changes at t = 12 s, in the middle of the transition
-    warm, cold = snap(C.CLEAR, 18.0, now0), snap(C.CLEAR, -5.0, now0)
+    warm, cold = snap(C.CLEAR, GRASS_C, now0), snap(C.CLEAR, -5.0, now0)
     frames = list(step(r, lambda t: cold if t >= 10.0 else warm, 0.0, 28.0, now0))
     assert r.biome is Biome.SNOW and r._transition is None and r.selector.current is Biome.SNOW
     assert any(img.getbbox() is None for _, img in frames)  # the screen goes fully black once
@@ -297,7 +304,7 @@ def test_biome_transition_end_to_end_through_the_renderer():
 def test_digits_still_update_within_budget_while_the_hero_is_busy_in_a_transition():
     r = Renderer(ASSETS, seed=1, min_stay_s=5.0)
     now0 = at(11, 59, 48)
-    warm, cold = snap(C.CLEAR, 18.0, now0), snap(C.CLEAR, -5.0, now0)
+    warm, cold = snap(C.CLEAR, GRASS_C, now0), snap(C.CLEAR, -5.0, now0)
     changed = None
     for t, _ in step(r, lambda t: cold if t >= 10.0 else warm, 0.0, 16.0, now0):
         if t >= 12.0 and changed is None and r.clockface.shown == (12, 0):
@@ -308,7 +315,7 @@ def test_digits_still_update_within_budget_while_the_hero_is_busy_in_a_transitio
 def test_world_scrolls_only_while_the_hero_walks_in_a_transition():
     r = Renderer(ASSETS, seed=1, min_stay_s=1.0)
     now0 = at(12, 0, 0)
-    warm, cold = snap(C.CLEAR, 18.0, now0), snap(C.CLEAR, -5.0, now0)
+    warm, cold = snap(C.CLEAR, GRASS_C, now0), snap(C.CLEAR, -5.0, now0)
     start = 2.0
     samples = []
     for t, _ in step(r, lambda t: cold if t >= start else warm, 0.0, start + HOP_END + 1.0, now0):
@@ -328,7 +335,7 @@ def test_world_scrolls_only_while_the_hero_walks_in_a_transition():
 def test_a_biome_change_waits_for_the_minimum_stay():
     r = Renderer(ASSETS, seed=1, min_stay_s=600.0)
     now0 = at()
-    warm, cold = snap(C.CLEAR, 18.0, now0), snap(C.CLEAR, -5.0, now0)
+    warm, cold = snap(C.CLEAR, GRASS_C, now0), snap(C.CLEAR, -5.0, now0)
     r.render(warm, 0.0, now0)
     for t in (1.0, 100.0, 500.0):
         r.render(cold, t, now0 + timedelta(seconds=t))
@@ -372,6 +379,9 @@ def test_heavy_weather_still_renders_under_the_dev_budget(cond, temp):
     ("desert_dusk", C.CLEAR, 35.0, at(18, 30)),
     ("fog_noon", C.FOG, 10.0, at(12)),
     ("thunder_night", C.THUNDER, 12.0, at(23)),
+    ("city_noon", C.CLEAR, 18.0, at(12)),
+    ("city_dusk", C.CLEAR, 18.0, at(18, 30)),
+    ("city_night", C.CLEAR, 18.0, at(23)),
 ])
 def test_golden_weather_scenes(request, name, cond, temp, when):
     img, _ = scene(cond, temp, when)
@@ -383,12 +393,71 @@ def test_golden_weather_scenes(request, name, cond, temp, when):
     assert img.tobytes() == Image.open(path).convert("RGB").tobytes()
 
 
+# --- the cave: a dim room ----------------------------------------------------------------
+
+
+def cave(cond=C.CLEAR, when=None, lux=8.0, **kw):
+    return scene(cond, 15.0, when or at(12), lux=lux, **kw)
+
+
+def test_a_dim_room_shows_the_cave_and_a_lit_room_does_not():
+    _, dim = cave()
+    assert dim.biome is Biome.CAVE
+    _, lit = cave(lux=300.0)
+    assert lit.biome is Biome.CITY
+    _, nosensor = scene(C.CLEAR, 15.0, at(12))
+    assert nosensor.biome is Biome.CITY
+
+
+def test_the_cave_has_no_sky_and_no_weather_and_looks_the_same_at_any_hour():
+    noon, r = cave(C.CLEAR, at(12))
+    storm, rs = cave(C.THUNDER, at(23), gust=60.0)
+    assert r.biome is Biome.CAVE and rs.biome is Biome.CAVE
+    assert count_where(noon, sunny) < 10  # no sun (a few yellow pixels are the hero's own)
+    left = (0, 24, 20, 64)  # scenery left of the hero, below the clock blocks
+    assert noon.crop(left).tobytes() == storm.crop(left).tobytes()
+    assert rs.effects.levels is not None and len(rs.rain.xs) > 0  # the storm runs on outside
+
+
+def test_the_hero_carries_no_umbrella_in_the_cave():
+    img, _ = cave(C.RAIN)
+    assert sum(1 for x in range(28, 36) if img.getpixel((x, 37)) == (0, 0, 0)) < 4
+
+
+@pytest.mark.parametrize("brightness", [10, 8])
+@pytest.mark.parametrize("hour", [12, 23])
+def test_the_cave_stays_distinguishable_at_low_brightness(hour, brightness):
+    from pixelwalk.tools.led_preview import collapsed_pairs
+
+    img, _ = cave(when=at(hour))
+    assert collapsed_pairs(img, brightness) == []
+
+
+def test_golden_cave(request):
+    img, _ = cave()
+    path = GOLDEN / "cave.png"
+    if request.config.getoption("--update-golden"):
+        img.save(path)
+    assert path.exists(), "no golden frame; run pytest --update-golden"
+    assert img.tobytes() == Image.open(path).convert("RGB").tobytes()
+
+
+def test_a_room_that_darkens_walks_the_hero_through_a_pipe_into_the_cave():
+    r = Renderer(ASSETS, seed=1, min_stay_s=5.0)
+    now0 = at(12, 0, 0)
+    lit, dim = snap(C.CLEAR, 15.0, now0, lux=300.0), snap(C.CLEAR, 15.0, now0, lux=8.0)
+    frames = list(step(r, lambda t: dim if t >= 10.0 else lit, 0.0, 28.0, now0))
+    assert r.biome is Biome.CAVE and r._transition is None
+    assert any(img.getbbox() is None for _, img in frames)  # the screen goes black once, as for any biome
+
+
 # --- night palettes on the LED panel -----------------------------------------------------
 
 
 NIGHT_SCENES = [
     ("grass", C.CLEAR, 15.0, 23), ("snow", C.CLEAR, -5.0, 23), ("desert", C.CLEAR, 35.0, 23),
-    ("rain", C.RAIN, 12.0, 23), ("heavy rain", C.HEAVY_RAIN, 12.0, 23), ("thunder", C.THUNDER, 12.0, 23),
+    ("city 2am", C.CLEAR, 15.0, 2), ("city dusk", C.CLEAR, 15.0, 19), ("city rain", C.RAIN, 15.0, 23),
+    ("grass cool", C.CLEAR, 5.0, 23), ("rain", C.RAIN, 12.0, 23), ("heavy rain", C.HEAVY_RAIN, 12.0, 23), ("thunder", C.THUNDER, 12.0, 23),
     ("snowing", C.SNOW, -3.0, 23), ("overcast", C.OVERCAST, 10.0, 23), ("grass 2am", C.CLEAR, 15.0, 2),
 ]
 
@@ -407,6 +476,15 @@ def test_night_scenes_stay_distinguishable_at_low_brightness(label, cond, temp, 
 def test_fog_at_night_only_merges_the_dark_haze_in_the_sky():
     from pixelwalk.tools.led_preview import collapsed_pairs
 
-    img, _ = scene(C.FOG, 10.0, at(23))
+    img, _ = scene(C.FOG, GRASS_C, at(23))
     for a, b, _edges in collapsed_pairs(img, 10):
         assert max(a) < 60 and max(b) < 60  # fog flattens the dark sky by design; nothing else merges
+
+
+def test_fog_at_night_in_the_city_only_merges_dark_haze():
+    from pixelwalk.tools.led_preview import collapsed_pairs
+
+    img, r = scene(C.FOG, 15.0, at(23))
+    assert r.biome is Biome.CITY
+    for a, b, _edges in collapsed_pairs(img, 10):
+        assert max(a) < 100 and max(b) < 100  # the far towers sink into the haze; the lit windows do not

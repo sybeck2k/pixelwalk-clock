@@ -183,6 +183,154 @@ def build_cacti(pal: Pal, rng: random.Random) -> Image.Image:
     return img
 
 
+# --- the city -----------------------------------------------------------------------------
+# Windows use two palette chars, 'x' and 'X'. By day both are glass; phases.py turns 'x' into lit
+# yellow (and 'X' into dark) from dusk on, so the geometry is the same and the city lights up.
+
+
+def build_skyline(pal: Pal, rng: random.Random) -> Image.Image:
+    """Distant towers, some stepped or with an antenna, with a grid of one-pixel windows."""
+    wall, shade, lit, dark = pal["e"], pal["E"], pal["x"], pal["X"]
+    img, d = _strip(FAR_H)
+    d.rectangle((0, FAR_H - 6, STRIP_W - 1, FAR_H - 1), fill=(*wall, 255))  # solid base, no gaps
+    x = rng.randint(0, 6)
+    while x < STRIP_W:
+        w, h = rng.randint(9, 16), rng.randint(12, 26)
+        top = FAR_H - h
+        stepped = rng.random() < 0.4
+        antenna = rng.random() < 0.3
+        windows = [
+            (wx, wy, rng.random() < 0.55)
+            for wy in range(top + 2, FAR_H - 4, 3)
+            for wx in range(x + 2, x + w - 2, 3)
+        ]
+        for off in _wrapped(0):
+            d.rectangle((x + off, top, x + w - 1 + off, FAR_H - 1), fill=(*wall, 255))
+            if stepped:
+                d.rectangle((x + 3 + off, top - 3, x + w - 4 + off, top), fill=(*wall, 255))
+            if antenna:
+                d.line((x + w // 2 + off, top - 5, x + w // 2 + off, top), fill=(*shade, 255))
+            d.line((x + w - 1 + off, top, x + w - 1 + off, FAR_H - 1), fill=(*shade, 255))
+            for wx, wy, on in windows:
+                d.point((wx + off, wy), fill=(*(lit if on else dark), 255))
+        x += w + rng.randint(-1, 3)
+    return img
+
+
+def build_street(pal: Pal, rng: random.Random) -> Image.Image:
+    """Shopfronts with awnings, street lamps and the odd tree."""
+    brick, edge, lit, dark = pal["m"], pal["M"], pal["x"], pal["X"]
+    img, d = _strip(NEAR_H)
+    base = NEAR_H - 1
+    awnings = (("r", "w"), ("u", "w"), ("G", "l"))
+    x = rng.randint(0, 6)
+    while x < STRIP_W:
+        kind = rng.choice(("shop", "shop", "lamp", "tree"))
+        if kind == "shop":
+            w, h = rng.randint(20, 30), rng.randint(13, 19)
+            top = NEAR_H - h
+            a1, a2 = (pal[c] for c in rng.choice(awnings))
+            shop_lit = rng.random() < 0.7
+            upper = [rng.random() < 0.6 for _ in range(3)] if h >= 17 else []
+            for off in _wrapped(0):
+                d.rectangle((x + off, top, x + w - 1 + off, base), fill=(*brick, 255))
+                d.line((x + off, top, x + w - 1 + off, top), fill=(*edge, 255))  # cornice
+                d.line((x + w - 1 + off, top, x + w - 1 + off, base), fill=(*edge, 255))
+                for i, on in enumerate(upper):
+                    wx = x + 3 + i * 7 + off
+                    d.rectangle((wx, top + 3, wx + 2, top + 5), fill=(*(lit if on else dark), 255))
+                for i in range(w - 2):  # the striped awning
+                    d.line((x + 1 + i + off, base - 9, x + 1 + i + off, base - 7), fill=(*(a1 if (i // 2) % 2 == 0 else a2), 255))
+                glass = lit if shop_lit else dark
+                d.rectangle((x + 2 + off, base - 6, x + w - 10 + off, base - 1), fill=(*glass, 255))
+                d.line((x + (w - 8) // 2 + off, base - 6, x + (w - 8) // 2 + off, base - 1), fill=(*edge, 255))
+                d.rectangle((x + w - 8 + off, base - 7, x + w - 5 + off, base), fill=(*pal["b"], 255))  # door
+                d.point((x + w - 6 + off, base - 3), fill=(*pal["y"], 255))
+            x += w + rng.randint(0, 2)
+        elif kind == "lamp":
+            for off in _wrapped(0):
+                cx = x + 4 + off
+                d.line((cx, base - 15, cx, base), fill=(*pal["A"], 255))
+                d.line((cx, base - 15, cx + 3, base - 15), fill=(*pal["A"], 255))
+                d.rectangle((cx + 2, base - 14, cx + 4, base - 13), fill=(*lit, 255))  # the lamp itself
+                d.rectangle((cx - 1, base - 1, cx + 1, base), fill=(*pal["a"], 255))
+            x += 10
+        else:
+            for off in _wrapped(0):
+                cx = x + 5 + off
+                d.rectangle((cx - 1, base - 6, cx, base), fill=(*pal["b"], 255))
+                d.ellipse((cx - 6, base - 17, cx + 5, base - 5), fill=(*pal["G"], 255))
+                for dx, dy in ((-3, -14), (0, -15), (-4, -11), (-1, -12)):
+                    d.point((cx + dx, base + dy), fill=(*pal["g"], 255))
+            x += 13
+    return img
+
+
+# --- the cave -----------------------------------------------------------------------------
+
+
+def build_cave_wall(pal: Pal, width: int, height: int) -> Image.Image:
+    """Instead of a sky: a dark rock wall with a few hanging stalactites and glow-worms."""
+    rng = random.Random(7)
+    img = Image.new("RGB", (width, height), pal["O"])
+    d = ImageDraw.Draw(img)
+    for _ in range(width * height // 100):  # rock flecks
+        x, y = rng.randrange(width), rng.randint(9, height - 1)
+        d.line((x, y, x + rng.randint(1, 3), y), fill=pal["o"])
+    x = rng.randint(0, 4)
+    while x < width:  # stalactites
+        hw, length = rng.randint(2, 4), rng.randint(3, 8)
+        d.polygon([(x - hw, 0), (x + hw, 0), (x, length)], fill=pal["o"])
+        x += rng.randint(7, 13)
+    for _ in range(7):
+        d.point((rng.randrange(width), rng.randint(9, 30)), fill=pal["c"])  # glow-worms
+    return img
+
+
+def build_rock_mounds(pal: Pal, rng: random.Random) -> Image.Image:
+    """Far cave: pointed rock formations rising from a dark floor."""
+    rock, floor = pal["o"], pal["O"]
+    img, d = _strip(FAR_H)
+    d.rectangle((0, FAR_H - 9, STRIP_W - 1, FAR_H - 1), fill=(*floor, 255))
+    x = rng.randint(6, 18)
+    while x < STRIP_W + 20:
+        hw, h = rng.randint(6, 12), rng.randint(6, 20)
+        base = FAR_H - 9
+        for off in _wrapped(0):
+            cx = x + off
+            d.polygon([(cx - hw, base + 1), (cx - hw // 3, base - h), (cx + hw // 4, base - h + 3), (cx + hw, base + 1)],
+                      fill=(*rock, 255))
+        x += rng.randint(20, 38)
+    return img
+
+
+def build_crystals(pal: Pal, rng: random.Random) -> Image.Image:
+    """Near cave: glowing crystal clusters, and a few mushrooms."""
+    img, d = _strip(NEAR_H)
+    base = NEAR_H - 1
+    schemes = (("t", "c", "T"), ("v", "p", "U"))
+    x = rng.randint(4, 20)
+    while x < STRIP_W:
+        if rng.random() < 0.7:
+            body, light, deep = (pal[c] for c in rng.choice(schemes))
+            spikes = [(dx, rng.randint(2, 3), rng.randint(6, 12)) for dx in (-4, 0, 4)]
+            for off in _wrapped(0):
+                for dx, w, h in spikes:
+                    cx = x + dx + off
+                    d.polygon([(cx - w, base), (cx, base - h), (cx + w, base)], fill=(*body, 255))
+                    d.polygon([(cx - w, base), (cx, base - h), (cx, base)], fill=(*light, 255))
+                    d.line((cx + w, base, cx + w - 1, base - h // 2), fill=(*deep, 255))
+                    d.point((cx, base - h), fill=(*pal["w"], 255))
+        else:
+            for off in _wrapped(0):
+                cx = x + off
+                d.line((cx, base - 3, cx, base), fill=(*pal["l"], 255))
+                d.rectangle((cx - 2, base - 6, cx + 2, base - 4), fill=(*pal["p"], 255))
+                d.point((cx - 1, base - 5), fill=(*pal["w"], 255))
+        x += rng.randint(22, 40)
+    return img
+
+
 def build_ground(tiles: list[Image.Image], rng: random.Random) -> Image.Image:
     img = Image.new("RGBA", (STRIP_W, GROUND_H))
     for i in range(STRIP_W // 8):
@@ -197,12 +345,21 @@ class BiomeDef:
     near: Callable[[Pal, random.Random], Image.Image]
     pipe: str  # transition pipe sprite
     wind: str  # what blows across it: "leaves" | "sand" | "snow"
+    # A sheltered biome (the cave) has a roof: its own backdrop instead of the sky, no sun, moon,
+    # clouds or weather, and it looks the same at every time of day.
+    sheltered: bool = False
+    backdrop: Callable[[Pal, int, int], Image.Image] | None = None
 
 
 BIOMES: dict[Biome, BiomeDef] = {
     Biome.GRASS: BiomeDef("ground", build_hills, build_bushes, "pipe_grass", "leaves"),
     Biome.SNOW: BiomeDef("ground_snow", build_peaks, build_pines, "pipe_snow", "snow"),
     Biome.DESERT: BiomeDef("ground_sand", build_dunes, build_cacti, "pipe_desert", "sand"),
+    Biome.CITY: BiomeDef("ground_city", build_skyline, build_street, "pipe_city", "leaves"),
+    Biome.CAVE: BiomeDef(
+        "ground_cave", build_rock_mounds, build_crystals, "pipe_cave", "leaves",
+        sheltered=True, backdrop=build_cave_wall,
+    ),
 }
 
 
@@ -216,12 +373,13 @@ class Layers:
 
 def build_layers(assets: Assets, biome: Biome, phase: Phase, seed: int, width: int, height: int) -> Layers:
     b = BIOMES[biome]
-    pal = phase_palette(assets.palette, phase)
+    pal = phase_palette(assets.palette, Phase.DAY if b.sheltered else phase)
     rng = random.Random(seed)
     tiles = [remap_image(f, assets.palette, pal) for f in assets[b.ground].frames]
     far = b.far(pal, rng)
     near = b.near(pal, rng)
-    return Layers(build_sky(pal, width, height), far, near, build_ground(tiles, rng))
+    sky = (b.backdrop or build_sky)(pal, width, height)
+    return Layers(sky, far, near, build_ground(tiles, rng))
 
 
 class World:
@@ -229,7 +387,13 @@ class World:
 
     def __init__(self, assets: Assets, seed: int, width: int, height: int) -> None:
         self.width = width
-        self.layers = {(b, p): build_layers(assets, b, p, seed, width, height) for b in Biome for p in Phase}
+        self.layers = {}
+        for b in Biome:
+            if BIOMES[b].sheltered:  # the same at every hour: built once
+                one = build_layers(assets, b, Phase.DAY, seed, width, height)
+                self.layers.update({(b, p): one for p in Phase})
+            else:
+                self.layers.update({(b, p): build_layers(assets, b, p, seed, width, height) for p in Phase})
         self._cache: dict[tuple, Image.Image] = {}
         self._far_masks: dict[tuple, Image.Image] = {}
 
@@ -242,7 +406,7 @@ class World:
         if blend.a is blend.b or q == 0:
             return a
         b = getattr(self.layers[(biome, blend.b)], name)
-        if q >= FADE_STEPS:
+        if q >= FADE_STEPS or b is a:
             return b
         key = (name, biome, blend.a, blend.b, q)
         img = self._cache.get(key)

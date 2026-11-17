@@ -25,7 +25,8 @@ The world reflects the real one:
   block, and the digits flip. The hour change gets a bigger event.
 - **Time of day.** The sky follows dawn, day, dusk and night, with stars and the real moon phase.
 - **Weather.** Clear, cloudy, rain, snow, thunderstorm, fog and wind each change the scene.
-- **Outdoor temperature** picks the biome (snowfield, grassland, desert). The hero travels
+- **Outdoor temperature and the room light** pick the biome (snowfield, grassland, city, desert,
+  or a cave when the room is dim). The hero travels
   between biomes through a pipe or door, so a change reads as a journey.
 - **Indoor temperature** is shown on screen, and the hero reacts when it is cold or hot.
 - **Presence.** When nobody is in the room the hero settles by a campfire and sleeps, the panel
@@ -496,14 +497,24 @@ times such as 07:30 and 18:30).
 
 | Biome | Chosen when | Elements |
 |---|---|---|
+| CAVE | the indoor light is below 20 lux (and above the dark-mode threshold, or the panel is off anyway) | rock wall with stalactites, rock mounds, glowing crystals, mushrooms |
 | SNOW | outdoor ≤ 0 °C, or it is snowing | white ground, pines, peaks |
-| GRASS | default | green ground, round hills, bushes |
 | DESERT | outdoor ≥ 28 °C | sand, dunes, cacti |
+| CITY | outdoor 10 to 24 °C | road and pavement, shopfronts with awnings, street lamps, trees, a skyline |
+| GRASS | default (0 to 10 °C and 24 to 28 °C) | green ground, round hills, bushes |
 
-- 2 °C of hysteresis on each threshold and a minimum stay of 10 minutes, so the biome does
-  not flap.
-- If weather is unknown, stay in the current biome (GRASS at first start).
-- Further biomes (cave or castle at night, seaside) are backlog; the biome list must be data,
+- The rules apply in the order above: a dim room wins over the weather.
+- 2 °C of hysteresis on each temperature threshold (the city band widens to 8 to 26 °C once we
+  are in it), 20 to 40 lux of hysteresis on the cave, and a minimum stay of 10 minutes, so the
+  biome does not flap.
+- If weather is unknown, stay in the current biome (GRASS at first start). Without a light
+  sensor there is no cave.
+- The city looks the same geometry at every hour; from dusk the window and lamp colour (`x`) turns
+  warm yellow and the dark windows (`X`) go dark, so the city lights up (`render/phases.py`).
+- The cave is sheltered (`BiomeDef.sheltered`): it has its own rock wall instead of a sky, no
+  sun, moon, stars, clouds, rain, wind or fog, no umbrella, and is built once from the day
+  palette so it looks the same at any hour. The weather keeps running and shows again on leaving.
+- Further biomes (seaside, autumn forest, castle) are backlog; the biome list must be data,
   not code, so adding one means adding art and a rule.
 
 ### 7.6 Weather effects

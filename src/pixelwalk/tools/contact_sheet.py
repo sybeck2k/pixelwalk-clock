@@ -64,8 +64,8 @@ def make_weather(cond, temp_c: float, when: datetime, gust: float = 10.0, cover:
 
 
 def weather_sheet(date: str = "2026-07-01", scale: int = 4, cols: int = 5) -> Image.Image:
-    """Every Condition, the three biomes at day/dusk/night, wind in each biome, and the barometer."""
-    from ..ports import Condition
+    """Every Condition, the biomes at day/dusk/night, the cave, wind in each biome, and the barometer."""
+    from ..ports import Condition, SensorReading
 
     assets = load_assets(Path("assets/src"))
     day = datetime.strptime(date, "%Y-%m-%d").astimezone()
@@ -75,13 +75,16 @@ def weather_sheet(date: str = "2026-07-01", scale: int = 4, cols: int = 5) -> Im
     for c in Condition:
         snap = WorldSnapshot(weather=make_weather(c, 18.0, noon, cover={Condition.CLEAR: 10.0}.get(c, 80.0)))
         cells.append((c.name.lower(), noon, snap))
-    for biome, temp in (("snow", -5.0), ("desert", 35.0)):
+    for biome, temp in (("snow", -5.0), ("desert", 35.0), ("city", 18.0)):
         for label, when in (("day", noon), ("dusk", at(18, 30)), ("night", at(23))):
             w = make_weather(Condition.CLEAR, temp, when)
             cells.append((f"{biome} {label}", when, WorldSnapshot(weather=w)))
-    for biome, temp in (("grass", 18.0), ("desert", 35.0), ("snow", -5.0)):
+    for biome, temp in (("grass", 5.0), ("city", 18.0), ("desert", 35.0), ("snow", -5.0)):
         w = make_weather(Condition.CLEAR, temp, noon, gust=60.0)
         cells.append((f"{biome} windy", noon, WorldSnapshot(weather=w)))
+    for label, cond, gust in (("cave (dim room)", Condition.CLEAR, 10.0), ("cave, storm outside", Condition.THUNDER, 60.0)):
+        room = SensorReading(lux=8.0, temperature_c=21.0, humidity_pct=45.0, pressure_hpa=1012.0, at=noon)
+        cells.append((label, noon, WorldSnapshot(weather=make_weather(cond, 18.0, noon, gust=gust), sensors=room)))
     cells.append(("barometer falling", noon, WorldSnapshot(
         weather=make_weather(Condition.CLEAR, 18.0, noon, cover=0.0), pressure_trend="worsening")))
     cells.append(("rain at night", at(23), WorldSnapshot(weather=make_weather(Condition.RAIN, 12.0, at(23)))))

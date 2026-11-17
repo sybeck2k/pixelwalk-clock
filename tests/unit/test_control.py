@@ -241,7 +241,7 @@ def test_status_describes_what_the_display_is_doing(tmp_path):
     app, ft = make_app(tmp_path)
     run(app, max_frames=15, sleep=ft.sleep)
     st = app.status
-    assert st["presence"] == "active" and st["biome"] == "grass" and st["brightness_relative"] > 50
+    assert st["presence"] == "active" and st["biome"] == "city" and st["brightness_relative"] > 50
     assert st["time"].startswith("2026-07-01 12:") and st["weather"] == "clear" and st["lux"] == 400.0
 
 
@@ -309,7 +309,7 @@ def test_state_endpoint_shows_the_live_status(served):
     app, ft, server = served
     run(app, max_frames=15, sleep=ft.sleep)
     code, st = call(server, "/api/state")
-    assert code == 200 and st["presence"] == "active" and st["biome"] == "grass"
+    assert code == 200 and st["presence"] == "active" and st["biome"] == "city"
 
 
 def test_scenario_endpoint_changes_the_simulated_world(served):

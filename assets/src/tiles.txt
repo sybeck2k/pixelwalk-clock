@@ -74,3 +74,43 @@ nnnnnnnn
 nnnNnnnn
 Nnnnnnnn
 NNNNNNNN
+
+sprite ground_city 8x8
+frame a
+aaaaaaaa
+aaaaaaAa
+AAAAAAAA
+AAAAAAAA
+AAAyyyAA
+AAAAAAAA
+AAAAAAAA
+AAAAAAAA
+frame b
+aaaaaaaa
+aAaaaaaa
+AAAAAAAA
+AAaAAAAA
+AAAAAAAA
+AAAAAAaA
+AAAAAAAA
+AAAAAAAA
+
+sprite ground_cave 8x8
+frame a
+oooooooo
+OOOOOOOO
+OOoOOOOO
+OOOOOOOo
+OoOOOOOO
+OOOOOoOO
+OOOOOOOO
+kkkkkkkk
+frame b
+ooooooOo
+OOOOOOOO
+OOOOoOOO
+oOOOOOOO
+OOOOOOoO
+OOoOOOOO
+OOOOOOOO
+kkkkkkkk

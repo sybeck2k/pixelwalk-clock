@@ -143,7 +143,7 @@ def test_the_running_app_swaps_through_its_settings_and_survives_a_stale_name(tm
     cfg["display"]["backend"] = "png"
     cfg["control"]["settings_path"] = str(tmp_path / "settings.json")
     app = build_app(cfg, ROOT)
-    assert app.settings.choices == {"hero.character": ["robot", "cat"], "world.biome": ["auto", "grass", "snow", "desert"]}
+    assert app.settings.choices == {"hero.character": ["robot", "cat"], "world.biome": ["auto", "grass", "snow", "desert", "cave", "city"]}
     changed, errors = app.settings.update({"world.biome": "snow"})
     assert errors == [] and changed == {"world.biome": "snow"}
     apply_settings(app, app.settings.values())

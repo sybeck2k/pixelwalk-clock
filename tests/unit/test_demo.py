@@ -228,8 +228,10 @@ def test_whole_demo_runs_headless_and_every_scene_happens(tmp_path, caplog):
     n_steps = len(app.demo.steps)
     assert labels[:n_steps] == [f"demo: {st.label}" for st in app.demo.steps]  # every step, in order
     assert len(labels) > n_steps and labels[n_steps].startswith("demo: Noon")  # then it loops
-    assert Biome.SNOW in biomes_seen and Biome.DESERT in biomes_seen and biomes_seen[0] is Biome.GRASS
-    assert biomes_seen.index(Biome.SNOW) < biomes_seen.index(Biome.DESERT)
+    assert biomes_seen[0] is Biome.CITY  # the tour starts mild, in the city
+    assert {Biome.SNOW, Biome.GRASS, Biome.DESERT, Biome.CAVE} <= set(biomes_seen)
+    assert biomes_seen.index(Biome.SNOW) < biomes_seen.index(Biome.GRASS) < biomes_seen.index(Biome.DESERT)
+    assert biomes_seen.index(Biome.CAVE) > biomes_seen.index(Biome.DESERT)  # the dim evening comes last
     order = [s for i, s in enumerate(presence_seen) if i == 0 or s != presence_seen[i - 1]]
     assert order[:5] == [S.ACTIVE, S.DROWSY, S.DARK, S.WAKING, S.ACTIVE]  # the empty room, in order
     assert 0 in disp.history and disp.history[-1] > 0 and max(disp.history) >= 80  # dimmed, dark, bright

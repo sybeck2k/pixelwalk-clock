@@ -62,10 +62,20 @@ def test_unknown_wmo_codes_are_overcast():
 @pytest.mark.parametrize(
     "current,temp,cond,expected",
     [
-        (Biome.GRASS, 15, C.CLEAR, Biome.GRASS),
+        (Biome.GRASS, 15, C.CLEAR, Biome.CITY),  # mild: the city
+        (Biome.GRASS, 5, C.CLEAR, Biome.GRASS),
         (Biome.GRASS, 0.0, C.CLEAR, Biome.SNOW),  # at or below 0
         (Biome.GRASS, 0.1, C.CLEAR, Biome.GRASS),
         (Biome.GRASS, 15, C.SNOW, Biome.SNOW),  # snowing, even when mild
+        (Biome.GRASS, 10.0, C.CLEAR, Biome.CITY),
+        (Biome.GRASS, 9.9, C.CLEAR, Biome.GRASS),
+        (Biome.GRASS, 24.0, C.CLEAR, Biome.CITY),
+        (Biome.GRASS, 24.1, C.CLEAR, Biome.GRASS),
+        (Biome.CITY, 8.5, C.CLEAR, Biome.CITY),  # hysteresis: the city band widens by 2 either side
+        (Biome.CITY, 7.9, C.CLEAR, Biome.GRASS),
+        (Biome.CITY, 25.9, C.CLEAR, Biome.CITY),
+        (Biome.CITY, 26.1, C.CLEAR, Biome.GRASS),
+        (Biome.CITY, 12, C.SNOW, Biome.SNOW),
         (Biome.SNOW, 1.9, C.CLEAR, Biome.SNOW),  # hysteresis: stays until above 2
         (Biome.SNOW, 2.1, C.CLEAR, Biome.GRASS),
         (Biome.SNOW, 5, C.SNOW, Biome.SNOW),
@@ -73,11 +83,30 @@ def test_unknown_wmo_codes_are_overcast():
         (Biome.GRASS, 27.9, C.CLEAR, Biome.GRASS),
         (Biome.DESERT, 26.5, C.CLEAR, Biome.DESERT),  # hysteresis: stays until below 26
         (Biome.DESERT, 25.9, C.CLEAR, Biome.GRASS),
+        (Biome.DESERT, 22.0, C.CLEAR, Biome.CITY),
         (Biome.DESERT, 30, C.SNOW, Biome.SNOW),
     ],
 )
 def test_choose_biome_table(current, temp, cond, expected):
     assert choose_biome(current, temp, cond) is expected
+
+
+@pytest.mark.parametrize(
+    "current,temp,cond,lux,expected",
+    [
+        (Biome.GRASS, 15, C.CLEAR, 19.9, Biome.CAVE),  # a dim room asks for the cave...
+        (Biome.GRASS, 15, C.CLEAR, 20.1, Biome.CITY),
+        (Biome.CITY, -5, C.SNOW, 5.0, Biome.CAVE),  # ...whatever the weather
+        (Biome.CAVE, 15, C.CLEAR, 39.0, Biome.CAVE),  # hysteresis: leaves only once clearly lit
+        (Biome.CAVE, 15, C.CLEAR, 41.0, Biome.CITY),
+        (Biome.CAVE, 15, C.CLEAR, None, Biome.CITY),  # no light sensor: no cave
+        (Biome.GRASS, None, None, 5.0, Biome.CAVE),  # no weather yet, but the room is dim
+        (Biome.CAVE, None, None, 300.0, Biome.GRASS),  # lit again, weather still unknown
+        (Biome.SNOW, None, None, 300.0, Biome.SNOW),  # unknown weather keeps the biome
+    ],
+)
+def test_choose_biome_with_the_room_light(current, temp, cond, lux, expected):
+    assert choose_biome(current, temp, cond, lux) is expected
 
 
 def test_biome_selector_minimum_stay_and_unknown_weather():
@@ -88,8 +117,8 @@ def test_biome_selector_minimum_stay_and_unknown_weather():
     assert sel.target(1.0, cold) is Biome.SNOW  # started without weather: the first reading acts at once
     sel.commit(1.0, Biome.SNOW)
     warm = make_weather(C.CLEAR, 20.0, cold.fetched_at)
-    assert sel.target(300.0, warm) is Biome.SNOW  # wanted GRASS, but not 10 minutes yet
-    assert sel.target(601.5, warm) is Biome.GRASS
+    assert sel.target(300.0, warm) is Biome.SNOW  # wanted the city, but not 10 minutes yet
+    assert sel.target(601.5, warm) is Biome.CITY
     assert sel.target(700.0, None) is Biome.SNOW  # unknown weather: stay
 
 
@@ -98,9 +127,17 @@ def test_selector_started_with_weather_has_a_minimum_stay():
 
     now = datetime.datetime(2026, 1, 1).astimezone()
     sel = BiomeSelector(min_stay_s=600)
-    assert sel.initialize(0.0, make_weather(C.CLEAR, 20.0, now)) is Biome.GRASS
-    assert sel.target(10.0, make_weather(C.CLEAR, 35.0, now)) is Biome.GRASS  # too soon
+    assert sel.initialize(0.0, make_weather(C.CLEAR, 20.0, now)) is Biome.CITY
+    assert sel.target(10.0, make_weather(C.CLEAR, 35.0, now)) is Biome.CITY  # too soon
     assert sel.target(601.0, make_weather(C.CLEAR, 35.0, now)) is Biome.DESERT
+
+
+def test_selector_starts_in_the_cave_in_a_dim_room_even_without_weather():
+    sel = BiomeSelector(min_stay_s=600)
+    assert sel.initialize(0.0, None, lux=5.0) is Biome.CAVE
+    assert sel.target(1.0, None, lux=5.0) is Biome.CAVE
+    assert sel.target(10.0, None, lux=300.0) is Biome.CAVE  # lit again, but not 10 minutes yet
+    assert sel.target(700.0, None, lux=300.0) is Biome.GRASS
 
 
 # --- effects -----------------------------------------------------------------------------

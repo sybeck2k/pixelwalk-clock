@@ -93,7 +93,7 @@ PARAMS: list[Param] = [
     Param("hero.character", "choice", "Look", "Character",
           hint="Who walks through the world. Any complete character in assets/src is listed."),
     Param("world.biome", "choice", "Look", "Scenery",
-          hint="Auto follows the weather; pick one to pin it (the robot takes a pipe to get there)."),
+          hint="Auto follows the weather and the room light (a dim room is a cave); pick one to pin it (the robot takes a pipe to get there)."),
     Param("director.min_stay_s", "float", "World", "Minimum stay in a biome (s)", 0, 86400, 10,
           "Stops the scenery from flapping between biomes."),
 ]
